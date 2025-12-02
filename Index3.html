@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Decorator with Fabric.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .controls-area {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .effects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        .effect-btn {
+            padding: 12px;
+            border: none;
+            background-color: #e4e6eb;
+            color: #050505;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .effect-btn:hover {
+            background-color: #d8dadf;
+            transform: translateY(-1px);
+        }
+
+        .effect-btn.active {
+            background-color: #1877f2;
+            color: white;
+        }
+
+        #canvas-wrapper {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Text Decorator</h1>
+
+        <div class="controls-area">
+            <div class="input-group">
+                <label for="textInput">Text</label>
+                <input type="text" id="textInput" value="HELLO WORLD" placeholder="Enter text">
+            </div>
+            <div class="input-group">
+                <label for="fontFamily">Font</label>
+                <select id="fontFamily">
+                    <option value="Arial">Arial</option>
+                    <option value="Impact" selected>Impact</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="textColor">Color</label>
+                <input type="color" id="textColor" value="#000000">
+            </div>
+        </div>
+
+        <div class="effects-grid">
+            <button class="effect-btn active" data-effect="none">None</button>
+            <button class="effect-btn" data-effect="arch">Arch</button>
+            <button class="effect-btn" data-effect="bridge">Bridge</button>
+            <button class="effect-btn" data-effect="bulge">Bulge</button>
+            <button class="effect-btn" data-effect="flag">Flag</button>
+            <button class="effect-btn" data-effect="valley">Valley</button>
+            <button class="effect-btn" data-effect="distort">Distort</button>
+            <button class="effect-btn" data-effect="circle">Circle</button>
+        </div>
+
+        <div id="canvas-wrapper">
+            <canvas id="c" width="800" height="400"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = new fabric.Canvas('c');
+        let currentEffect = 'none';
+
+        // Configuration
+        const config = {
+            fontSize: 60,
+            radius: 150,
+            spacing: 0
+        };
+
+        function getBaseTextOptions() {
+            return {
+                fontSize: config.fontSize,
+                fontFamily: document.getElementById('fontFamily').value,
+                fill: document.getElementById('textColor').value,
+                originX: 'center',
+                originY: 'center'
+            };
+        }
+
+        const effects = {
+            none: (text) => {
+                const options = getBaseTextOptions();
+                return new fabric.Text(text, {
+                    ...options,
+                    left: canvas.width / 2,
+                    top: canvas.height / 2
+                });
+            },
+
+            arch: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const angleRange = Math.PI;
+                const radius = config.radius;
+                const totalAngle = angleRange;
+                const startAngle = -Math.PI / 2 - totalAngle / 2;
+
+                // Calculate angle step based on text length to fit in the range
+                // Or use fixed spacing. Let's use fixed spacing logic mapped to arc.
+                // Simple approach: distribute evenly across an arc
+
+                const len = text.length;
+                const step = totalAngle / (len > 1 ? len - 1 : 1);
+
+                for (let i = 0; i < len; i++) {
+                    const char = text[i];
+                    // Map i to angle
+                    // Center is 0. 
+                    // Let's center the text on the top of the arch.
+                    // Top of arch is -90 deg (3*PI/2 or -PI/2).
+
+                    // Let's use a simpler approach: 
+                    // Center of arch is at angle -PI/2.
+                    // We spread characters around it.
+
+                    const charAngle = -Math.PI / 2 + (i - (len - 1) / 2) * 0.2; // 0.2 radians per char
+
+                    const c = new fabric.Text(char, {
+                        ...options,
+                        left: Math.cos(charAngle) * radius,
+                        top: Math.sin(charAngle) * radius,
+                        angle: (charAngle * 180 / Math.PI) + 90 // Rotate char to be perpendicular to radius
+                    });
+                    group.addWithUpdate(c);
+                }
+                return group;
+            },
+
+            bridge: (text) => {
+                // Bridge is like Arch but usually bottom curved? Or top curved?
+                // Usually "Bridge" implies the text follows a bridge shape (convex up).
+                // "Valley" is concave (convex down).
+                // "Arch" is also convex up. 
+                // Let's differentiate: Arch is a full arc. Bridge might be flatter?
+                // In Word Art, Arch and Bridge are similar. 
+                // Let's implement Bridge as a flatter Arch or just same as Arch.
+                // Wait, usually Arch is curved top and bottom?
+                // Let's stick to the implementation in index2.html which was:
+                // Arch: characters on a circle.
+                // Bridge: characters on a curve but maybe different orientation?
+                // index2.html implementation of Bridge:
+                // top: -distance * 15. This makes the center higher. This is a "Bridge".
+                // index2.html implementation of Arch:
+                // Uses sin/cos on a radius. This is a true circular arch.
+
+                // I will use the index2.html logic for Bridge (linear displacement) vs Arch (circular placement).
+
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const len = text.length;
+                const mid = (len - 1) / 2;
+                let offsetX = 0;
+
+                // First calculate total width to center
+                // We need to generate objects first to know width?
+                // Or just assume fixed width? fabric.Text width varies.
+
+                // Better approach: Create all chars, measure, then position.
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach((c, i) => {
+                    const dist = Math.abs(i - mid);
+                    // Bridge: center is high, sides are low.
+                    // Parabolic curve: y = a * x^2
+                    // Normalized x from -1 to 1
+                    const normX = (i - mid) / (mid || 1);
+                    const y = 50 * (normX * normX); // 50px drop at edges
+
+                    c.set({
+                        left: currentX + c.width / 2, // center of char
+                        top: y,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    currentX += c.width;
+                    group.addWithUpdate(c);
+                });
+
+                return group;
+            },
+
+            valley: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0);
+                let currentX = -totalWidth / 2;
+                const mid = (chars.length - 1) / 2;
+
+                chars.forEach((c, i) => {
+                    const normX = (i - mid) / (mid || 1);
+                    // Valley: Center low (positive Y), sides high (negative Y).
+                    // Inverted parabola: y = -a * x^2
+                    // But we want center to be the lowest point (max Y).
+                    // Wait.
+                    // Bridge (Hill): Center is Top (Min Y). Edges are Bottom (Max Y).
+                    // Valley: Center is Bottom (Max Y). Edges are Top (Min Y).
+
+                    // Bridge: y = 50 * x^2. (x=0 -> y=0. x=1 -> y=50). Correct.
+                    // Valley: y = -50 * x^2. (x=0 -> y=0. x=1 -> y=-50).
+                    // This puts center at 0, edges at -50 (Higher).
+                    // This is correct for Valley shape.
+
+                    const y = -50 * (normX * normX) + 25;
+
+                    c.set({
+                        left: currentX + c.width / 2,
+                        top: y,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    currentX += c.width;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            bulge: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0); // Approx width
+                // Note: scaling changes width, so we need to be careful.
+
+                const mid = (chars.length - 1) / 2;
+                let currentX = 0; // We'll center later
+
+                // We need to calculate positions based on SCALED widths.
+                // Let's do a first pass to set scales and widths.
+
+                chars.forEach((c, i) => {
+                    const dist = Math.abs(i - mid);
+                    const maxDist = mid || 1;
+                    // Bulge: Center big, edges small.
+                    const scale = 1 + 0.8 * (1 - dist / maxDist); // Center 1.8x, Edges 1.0x
+                    c.set({
+                        fontSize: options.fontSize * scale
+                    });
+                });
+
+                // Now position
+                const realTotalWidth = chars.reduce((acc, c) => acc + c.width * c.scaleX, 0); // fabric text width is pre-scale? No, fontSize handles it.
+                // Wait, if I set fontSize, width changes.
+                // fabric.Text width is updated when fontSize changes? Yes.
+
+                currentX = -chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) / 2;
+
+                chars.forEach(c => {
+                    c.set({
+                        left: currentX + c.getScaledWidth() / 2,
+                        top: 0,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    currentX += c.getScaledWidth();
+                    group.addWithUpdate(c);
+                });
+
+                return group;
+            },
+
+            flag: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2;
+
+                chars.forEach((c, i) => {
+                    // Sine wave
+                    const y = Math.sin(i * 0.5) * 20;
+                    c.set({
+                        left: currentX + c.width / 2,
+                        top: y,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    currentX += c.width;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            distort: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2;
+
+                chars.forEach((c, i) => {
+                    // Random skew or pattern
+                    const skew = (i % 2 === 0) ? -20 : 20;
+                    c.set({
+                        left: currentX + c.width / 2,
+                        top: 0,
+                        skewY: skew,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    currentX += c.width;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            circle: (text) => {
+                const options = getBaseTextOptions();
+                const group = new fabric.Group([], {
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                const radius = 120;
+                const len = text.length;
+                const angleStep = (2 * Math.PI) / len;
+
+                for (let i = 0; i < len; i++) {
+                    const char = text[i];
+                    const angle = i * angleStep - Math.PI / 2; // Start at top
+
+                    const c = new fabric.Text(char, {
+                        ...options,
+                        left: Math.cos(angle) * radius,
+                        top: Math.sin(angle) * radius,
+                        angle: (angle * 180 / Math.PI) + 90,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    group.addWithUpdate(c);
+                }
+                return group;
+            }
+        };
+
+        function render() {
+            canvas.clear();
+            const text = document.getElementById('textInput').value;
+
+            if (effects[currentEffect]) {
+                const obj = effects[currentEffect](text);
+                canvas.add(obj);
+                canvas.centerObject(obj);
+                obj.setCoords();
+            }
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.effect-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentEffect = e.target.dataset.effect;
+                render();
+            });
+        });
+
+        ['textInput', 'fontFamily', 'textColor'].forEach(id => {
+            document.getElementById(id).addEventListener('input', render);
+        });
+
+        // Initial render
+        render();
+
+    </script>
+</body>
+
+</html>
