@@ -476,6 +476,143 @@
 
         // Initial render
         updateText();
+
+        // Concave Bottom Rectangle Shape Function
+        function createConcaveBottomRectangle(svgContainerId, x, y, width, height, curveDepth) {
+            const svg = document.getElementById(svgContainerId);
+            if (!svg) {
+                console.error(`SVG container with ID '${svgContainerId}' not found.`);
+                return;
+            }
+
+            // Define the path data for the shape
+            // M: Move to (starting point)
+            // H: Horizontal line to
+            // V: Vertical line to
+            // Q: Quadratic Bezier curve (control point, end point)
+            const pathData = `
+                M ${x} ${y}
+                H ${x + width}
+                V ${y + height}
+                Q ${x + width / 2} ${y + height + curveDepth} ${x} ${y + height}
+                Z
+            `;
+
+            const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathElement.setAttribute("d", pathData);
+            pathElement.setAttribute("fill", "lightblue"); // Example fill color
+            pathElement.setAttribute("stroke", "blue");    // Example stroke color
+            pathElement.setAttribute("stroke-width", "2"); // Example stroke width
+
+            svg.appendChild(pathElement);
+        }
+
+        // Add text that follows the concave rectangle shape
+        function addTextToConcaveRectangle(svgContainerId, text, x, y, width, height, curveDepth, fontSize = 24) {
+            const svg = document.getElementById(svgContainerId);
+            if (!svg) {
+                console.error(`SVG container with ID '${svgContainerId}' not found.`);
+                return;
+            }
+
+            const textGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            const charWidth = fontSize * 0.6; // Approximate character width
+            const totalWidth = text.length * charWidth;
+            const startX = x + (width - totalWidth) / 2; // Center text horizontally
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                // Calculate horizontal position (spread evenly across the rectangle width)
+                const charX = startX + i * charWidth;
+                const normalizedX = (charX - x) / width; // 0 to 1
+                
+                // Calculate vertical position based on concave curve
+                // Bottom curve: y = height + curveDepth * (4 * normX * (1 - normX))
+                // This creates a parabolic concave curve
+                const curveY = height + curveDepth * (4 * normalizedX * (1 - normalizedX));
+                const charY = y + curveY;
+                
+                // Create text element
+                const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                textElement.setAttribute("x", charX);
+                textElement.setAttribute("y", charY);
+                textElement.setAttribute("font-size", fontSize);
+                textElement.setAttribute("font-family", "Arial, sans-serif");
+                textElement.setAttribute("font-weight", "bold");
+                textElement.setAttribute("fill", "darkblue");
+                textElement.setAttribute("text-anchor", "middle");
+                textElement.setAttribute("dominant-baseline", "middle");
+                
+                // Optional: rotate text slightly to follow curve
+                const angle = 0; // Can add rotation if needed
+                if (angle !== 0) {
+                    textElement.setAttribute("transform", `rotate(${angle}, ${charX}, ${charY})`);
+                }
+                
+                textElement.textContent = char;
+                textGroup.appendChild(textElement);
+            }
+
+            svg.appendChild(textGroup);
+        }
+
+        // Convex Bottom Rectangle Shape Function
+        function createConvexBottomRectangle(svgContainerId, x, y, width, height, curveDepth) {
+            const svg = document.getElementById(svgContainerId);
+            if (!svg) {
+                console.error(`SVG container with ID '${svgContainerId}' not found.`);
+                return;
+            }
+
+            // Define the path data for the shape with convex bottom
+            // M: Move to (starting point)
+            // H: Horizontal line to
+            // V: Vertical line to
+            // Q: Quadratic Bezier curve (control point, end point)
+            // The curve goes upward (curveDepth is subtracted) to create a convex (bulging out) effect
+            const pathData = `
+                M ${x} ${y}
+                H ${x + width}
+                V ${y + height}
+                Q ${x + width / 2} ${y + height - curveDepth} ${x} ${y + height}
+                Z
+            `;
+
+            const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathElement.setAttribute("d", pathData);
+            pathElement.setAttribute("fill", "lightcoral"); // Example fill color
+            pathElement.setAttribute("stroke", "red");      // Example stroke color
+            pathElement.setAttribute("stroke-width", "2");  // Example stroke width
+
+            svg.appendChild(pathElement);
+        }
+
+        // Create SVG container for both shapes and add them
+        document.addEventListener("DOMContentLoaded", () => {
+            // Create an SVG element to hold both shapes
+            const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svgContainer.setAttribute("id", "shapesSvg");
+            svgContainer.setAttribute("width", "900");
+            svgContainer.setAttribute("height", "300");
+            svgContainer.setAttribute("style", "border: 1px solid #ccc; margin-top: 20px; background: white;");
+            
+            // Insert the SVG into the page
+            const canvasContainer = document.getElementById("canvas-container");
+            if (canvasContainer) {
+                canvasContainer.parentNode.insertBefore(svgContainer, canvasContainer.nextSibling);
+            }
+            
+            // Create the concave bottom rectangle (left side)
+            createConcaveBottomRectangle("shapesSvg", 50, 50, 200, 100, 30);
+            
+            // Create the convex bottom rectangle (right side)
+            createConvexBottomRectangle("shapesSvg", 320, 50, 200, 100, 30);
+            
+            // Add text that follows the shapes
+            addTextToConcaveRectangle("shapesSvg", "CONCAVE", 50, 50, 200, 100, 30, 18);
+            addTextToConcaveRectangle("shapesSvg", "CONVEX", 320, 50, 200, 100, -30, 18);
+        });
     </script>
 </body>
 </html>
