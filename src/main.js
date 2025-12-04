@@ -19,8 +19,8 @@ wrapviewInstance.draw(threeDiv);
 const scene = wrapviewInstance.scene();
 const camera = wrapviewInstance.camera();
 const renderer = wrapviewInstance.renderer();
-scene.background = new THREE.Color(0x222222);
-renderer.setClearColor(0x222222);
+scene.background = new THREE.Color(0xffffff);
+renderer.setClearColor(0xffffff);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
@@ -73,9 +73,9 @@ const createSvgLayerFromEditor = () => {
     }
 
     const svgLayer = new WrapviewSvgLayer('svg-layer-' + Date.now(), {
-        size: { width: 360, height: 360 },
+        size: { width: 2560, height: 2560 },
         pivot: { x: 0.5, y: 0.5 },
-        position: { x: 180, y: 180 },
+        position: { x: 1280, y: 1280 },
         angle: 0
     });
 
@@ -84,16 +84,16 @@ const createSvgLayerFromEditor = () => {
         .then(() => {
             console.log('SVG layer loaded successfully');
             
-            // Create texture from SVG layer canvas
+            // Create texture from SVG layer canvas with optimal filtering for zoom
             const canvas = svgLayer.getCanvas();
             const texture = new THREE.CanvasTexture(canvas);
             texture.needsUpdate = true;
-            
-            // Improve texture quality
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
+            // Use NearestFilter for pixel-perfect rendering at native resolution
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.generateMipmaps = true;
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
+            
             // Apply to cube material with transparency support
             const svgMaterial = new THREE.MeshBasicMaterial({ 
                 map: texture,
@@ -121,13 +121,18 @@ svgEditor.setOnChange((dataUrl) => {
         // Update existing SVG layer
         currentSvgLayer.load({ svgData: dataUrl })
             .then(() => {
-                // Update the texture with quality settings
+                // Dispose old texture and create new one for proper update
                 if (materials[0].map) {
-                    materials[0].map.needsUpdate = true;
-                    materials[0].map.minFilter = THREE.LinearFilter;
-                    materials[0].map.magFilter = THREE.LinearFilter;
-                    materials[0].map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                    materials[0].map.dispose();
                 }
+                const newCanvas = currentSvgLayer.getCanvas();
+                const newTexture = new THREE.CanvasTexture(newCanvas);
+                newTexture.needsUpdate = true;
+                newTexture.magFilter = THREE.NearestFilter;
+                newTexture.minFilter = THREE.LinearMipmapLinearFilter;
+                newTexture.generateMipmaps = true;
+                newTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                materials[0].map = newTexture;
                 console.log('SVG layer updated');
             })
             .catch(error => {

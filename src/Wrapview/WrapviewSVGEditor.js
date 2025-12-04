@@ -91,7 +91,8 @@ class WrapviewSVGEditor {
                 originX: 'center',
                 originY: 'center',
                 stroke: outlineEnabled ? strokeColor : undefined,
-                strokeWidth: outlineEnabled ? strokeWidth : 0
+                strokeWidth: outlineEnabled ? strokeWidth : 0,
+                paintFirst: 'stroke' // Ensures outline is drawn outside glyph
             };
         };
 
@@ -99,14 +100,42 @@ class WrapviewSVGEditor {
         const effects = {
             none: (text) => {
                 const options = getBaseTextOptions();
-                return new fabric.Text(text, {
-                    ...options,
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2
-                });
+                // Adjust spacing for outline
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7; // 0.7 is a good visual fudge factor
+                }
+                // If spacing is needed, render as group of chars
+                if (spacing > 0) {
+                    const chars = text.split('').map(c => new fabric.Text(c, options));
+                    let totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
+                    let currentX = -totalWidth / 2;
+                    const group = new fabric.Group([], {
+                        left: this._canvas.width / 2,
+                        top: this._canvas.height / 2,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    chars.forEach((ch, i) => {
+                        ch.set({ left: currentX + ch.width / 2, top: 0, originX: 'center', originY: 'center' });
+                        currentX += ch.width + spacing;
+                        group.addWithUpdate(ch);
+                    });
+                    return group;
+                } else {
+                    return new fabric.Text(text, {
+                        ...options,
+                        left: this._canvas.width / 2,
+                        top: this._canvas.height / 2
+                    });
+                }
             },
             arch: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -115,9 +144,13 @@ class WrapviewSVGEditor {
                 });
                 const radius = this._index3Config.radius;
                 const len = text.length;
+                const intensity = this._index3Config.intensity;
+                // Spread chars with extra angle for spacing
+                const baseAngleStep = 0.2 * intensity;
+                const angleStep = baseAngleStep + (spacing / radius);
                 for (let i = 0; i < len; i++) {
                     const char = text[i];
-                    const charAngle = -Math.PI / 2 + (i - (len - 1) / 2) * 0.2;
+                    const charAngle = -Math.PI / 2 + (i - (len - 1) / 2) * angleStep;
                     const c = new fabric.Text(char, {
                         ...options,
                         left: Math.cos(charAngle) * radius,
@@ -130,6 +163,10 @@ class WrapviewSVGEditor {
             },
             bridge: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -137,21 +174,26 @@ class WrapviewSVGEditor {
                     originY: 'center'
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
-                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0);
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
                 let currentX = -totalWidth / 2;
                 const len = text.length;
                 const mid = (len - 1) / 2;
+                const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
                     const normX = (i - mid) / (mid || 1);
-                    const y = 50 * (normX * normX);
+                    const y = 50 * (normX * normX) * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width;
+                    currentX += ch.width + spacing;
                     group.addWithUpdate(ch);
                 });
                 return group;
             },
             valley: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -159,20 +201,25 @@ class WrapviewSVGEditor {
                     originY: 'center'
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
-                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0);
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
                 let currentX = -totalWidth / 2;
                 const mid = (chars.length - 1) / 2;
+                const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
                     const normX = (i - mid) / (mid || 1);
-                    const y = -50 * (normX * normX) + 25;
+                    const y = (-50 * (normX * normX) + 25) * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width;
+                    currentX += ch.width + spacing;
                     group.addWithUpdate(ch);
                 });
                 return group;
             },
             bulge: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -181,22 +228,28 @@ class WrapviewSVGEditor {
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
                 const mid = (chars.length - 1) / 2;
+                const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
                     const dist = Math.abs(i - mid);
                     const maxDist = mid || 1;
-                    const scale = 1 + 0.8 * (1 - dist / maxDist);
+                    // Intensity affects bulge
+                    const scale = 1 + 0.8 * (1 - dist / maxDist) * intensity;
                     ch.set({ fontSize: options.fontSize * scale });
                 });
-                let currentX = -chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) / 2;
+                let currentX = -chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) / 2 - (chars.length - 1) * spacing / 2;
                 chars.forEach(ch => {
                     ch.set({ left: currentX + ch.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
-                    currentX += ch.getScaledWidth();
+                    currentX += ch.getScaledWidth() + spacing;
                     group.addWithUpdate(ch);
                 });
                 return group;
             },
             flag: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -204,17 +257,23 @@ class WrapviewSVGEditor {
                     originY: 'center'
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
-                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2;
+                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
+                const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
-                    const y = Math.sin(i * 0.5) * 20;
+                    // Intensity affects amplitude
+                    const y = Math.sin(i * 0.5) * 20 * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width;
+                    currentX += ch.width + spacing;
                     group.addWithUpdate(ch);
                 });
                 return group;
             },
             distort: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
@@ -222,26 +281,34 @@ class WrapviewSVGEditor {
                     originY: 'center'
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
-                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2;
+                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
+                const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
-                    const skew = (i % 2 === 0) ? -20 : 20;
+                    // Intensity affects skew
+                    const skew = (i % 2 === 0) ? -20 * intensity : 20 * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: 0, skewY: skew, originX: 'center', originY: 'center' });
-                    currentX += ch.width;
+                    currentX += ch.width + spacing;
                     group.addWithUpdate(ch);
                 });
                 return group;
             },
             circle: (text) => {
                 const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
                     originX: 'center',
                     originY: 'center'
                 });
-                const radius = 120;
+                const radius = 120 * this._index3Config.intensity;
                 const len = text.length;
-                const angleStep = (2 * Math.PI) / len;
+                // Angle step is increased to account for spacing
+                const baseAngleStep = (2 * Math.PI) / len;
+                const angleStep = baseAngleStep + (spacing / radius);
                 for (let i = 0; i < len; i++) {
                     const char = text[i];
                     const angle = i * angleStep - Math.PI / 2;
@@ -291,6 +358,16 @@ class WrapviewSVGEditor {
                 el.addEventListener('change', render);
             }
         });
+        // Intensity slider
+        const intensitySlider = document.getElementById('intensitySlider');
+        const intensityValue = document.getElementById('intensityValue');
+        if (intensitySlider && intensityValue) {
+            intensitySlider.addEventListener('input', () => {
+                this._index3Config.intensity = Number(intensitySlider.value);
+                intensityValue.textContent = Number(intensitySlider.value).toFixed(2);
+                render();
+            });
+        }
         
         // Font size increment/decrement
         const fontInc = document.getElementById('fontInc');
@@ -482,6 +559,11 @@ class WrapviewSVGEditor {
                     <input type="number" id="outlineWidth" value="2" min="0" max="20" style="padding:6px;border:1px solid #ddd;border-radius:6px;" />
                 </div>
             </div>
+            <div style="margin: 12px 0; display: flex; align-items: center; gap: 12px;">
+                <label for="intensitySlider" style="font-weight:600;color:#555;">Intensity:</label>
+                <input type="range" id="intensitySlider" min="0.2" max="2.5" step="0.01" value="1" style="width:180px;">
+                <span id="intensityValue" style="font-weight:600;color:#555;">1.00</span>
+            </div>
             <div class="effects-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px,1fr)); gap:12px; width:100%;">
                 <button class="effect-btn active" data-effect="none" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">None</button>
                 <button class="effect-btn" data-effect="arch" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Arch</button>
@@ -493,7 +575,7 @@ class WrapviewSVGEditor {
                 <button class="effect-btn" data-effect="circle" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Circle</button>
             </div>
             <div id="canvas-wrapper" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;background-image:linear-gradient(45deg,#f0f0f0 25%,transparent 25%),linear-gradient(-45deg,#f0f0f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f0f0 75%),linear-gradient(-45deg,transparent 75%,#f0f0f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0px;display:flex;justify-content:center;">
-                <canvas id="c" width="360" height="360" style="display:block"></canvas>
+                <canvas id="c" width="2560" height="2560" style="display:block;width:360px;height:360px;"></canvas>
             </div>
         </div>`;
     }
