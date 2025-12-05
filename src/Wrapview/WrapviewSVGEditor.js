@@ -1,4 +1,3 @@
-
 class WrapviewSVGEditor {
     constructor(instance) {
         this._instance = instance;
@@ -6,9 +5,16 @@ class WrapviewSVGEditor {
         this._root = null;
         this._canvasEl = null;
         this._canvas = null;
-        this._index3Config = null;
-        this._currentEffect = null;
+        this._currentEffect = 'none';
         this._chgT = null;
+        this._textColorPalette = [
+            'transparent',
+            '#ffffff', '#dcdcdc', '#222222', '#4b4b4b', '#6b6b6b', '#ff008c', '#ff9cb3', '#ff85b6',
+            '#b14b8e', '#6a1c2a', '#c3132c', '#e33b3b', '#f56c1d', '#f5a021', '#f1b22a', '#f7c529',
+            '#ffe976', '#815520', '#64c9b8', '#9edb2a', '#218e3f', '#0c6b45', '#2e4a34', '#0a6b73',
+            '#00a3c6', '#00a8f1', '#8bc4f6', '#126ca3', '#0d43c8', '#123767', '#0e3557', '#9c75c7',
+            '#c218a8'
+        ];
     }
 
     // --- Public API ---
@@ -45,182 +51,114 @@ class WrapviewSVGEditor {
         return this._canvas.toDataURL({ format: 'png', multiplier: 1, enableRetinaScaling: false });
     }
 
+    // --- Helper methods ---
+    _isOutlineEnabled() {
+        return document.getElementById('outlineToggle')?.dataset.enabled === 'true';
+    }
+
+    _getStrokeWidth() {
+        return parseFloat(document.getElementById('outlineWidth')?.value) || 0;
+    }
+
+    _getFontSize() {
+        const val = parseFloat(document.getElementById('textSize')?.value);
+        return Number.isFinite(val) && val > 0 ? val : 60;
+    }
+
+    _getCharSpacing() {
+        const strokeWidth = this._isOutlineEnabled() ? this._getStrokeWidth() : 0;
+        return strokeWidth * 0.6;
+    }
+
+    _getFillColor() {
+        const input = document.getElementById('textColor');
+        const explicit = input?.dataset.fill;
+        if (explicit === 'transparent') return 'transparent';
+        return input?.value || '#000000';
+    }
+
+    _getBaseTextOptions() {
+        const outlineEnabled = this._isOutlineEnabled();
+        const strokeColor = document.getElementById('outlineColor')?.value || '#000000';
+        const strokeWidth = this._getStrokeWidth();
+        return {
+            fontSize: this._getFontSize(),
+            fontFamily: document.getElementById('fontFamily')?.value || 'Arial',
+            fill: this._getFillColor(),
+            stroke: outlineEnabled ? strokeColor : undefined,
+            strokeWidth: outlineEnabled ? strokeWidth : 0,
+            strokeUniform: true,
+            originX: 'center',
+            originY: 'center'
+        };
+    }
+
     // --- Core methods ---
     _initFabric() {
         this._canvas = new fabric.Canvas(this._canvasEl, { backgroundColor: null });
-        this._canvas.setWidth(360);
-        this._canvas.setHeight(360);
+        this._canvas.setWidth(2560);
+        this._canvas.setHeight(2560);
 
-        this._index3Config = { fontSize: 60, radius: 150, spacing: 0, intensity: 1 };
+        this._config = { fontSize: 60, radius: 150, spacing: 0, intensity: 1 };
         this._currentEffect = 'none';
 
-        const getBaseTextOptions = () => {
-            const fillVal = document.getElementById('textColor').value;
-            const transparentChecked = document.getElementById('textTransparent')?.checked;
-            const strokeColor = document.getElementById('outlineColor')?.value || '#000000';
-            const strokeWidth = Number(document.getElementById('outlineWidth')?.value || 0);
-            const outlineEnabled = document.getElementById('outlineEnabled')?.checked;
-            return {
-                fontSize: this._index3Config.fontSize,
-                fontFamily: document.getElementById('fontFamily').value,
-                fill: transparentChecked ? 'rgba(0,0,0,0)' : fillVal,
-                originX: 'center',
-                originY: 'center',
-                stroke: outlineEnabled ? strokeColor : undefined,
-                strokeWidth: outlineEnabled ? strokeWidth : 0,
-                paintFirst: 'stroke'
-            };
-        };
+        const getBaseTextOptions = () => this._getBaseTextOptions();
 
         const effects = {
             none: (text) => {
                 const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
-                if (spacing > 0) {
-                    const chars = text.split('').map(c => new fabric.Text(c, options));
-                    let totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
-                    let currentX = -totalWidth / 2;
-                    const group = new fabric.Group([], {
-                        left: this._canvas.width / 2,
-                        top: this._canvas.height / 2,
-                        originX: 'center',
-                        originY: 'center'
-                    });
-                    chars.forEach((ch) => {
-                        ch.set({ left: currentX + ch.width / 2, top: 0, originX: 'center', originY: 'center' });
-                        currentX += ch.width + spacing;
-                        group.addWithUpdate(ch);
-                    });
-                    return group;
-                } else {
-                    return new fabric.Text(text, {
-                        ...options,
-                        left: this._canvas.width / 2,
-                        top: this._canvas.height / 2
-                    });
-                }
-            },
-            arch: (text) => {
-                const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
+                const spacing = this._getCharSpacing();
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
+                let currentX = -totalWidth / 2;
                 const group = new fabric.Group([], {
                     left: this._canvas.width / 2,
                     top: this._canvas.height / 2,
                     originX: 'center',
                     originY: 'center'
                 });
-                const radius = this._index3Config.radius;
+                chars.forEach((ch) => {
+                    ch.set({ left: currentX + ch.width / 2, top: 0, originX: 'center', originY: 'center' });
+                    currentX += ch.width + spacing;
+                    group.addWithUpdate(ch);
+                });
+                return group;
+            },
+
+            arch: (text) => {
+                const options = getBaseTextOptions();
+                const spacing = this._getCharSpacing();
+                const group = new fabric.Group([], {
+                    left: 0,
+                    top: 0,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const radius = 130;
                 const len = text.length;
-                const intensity = this._index3Config.intensity;
-                const baseAngleStep = 0.2 * intensity;
-                const angleStep = baseAngleStep + (spacing / radius);
+                const angleRange = Math.PI * 0.8;
+                const startAngle = -Math.PI / 2 - angleRange / 2;
+
                 for (let i = 0; i < len; i++) {
                     const char = text[i];
-                    const charAngle = -Math.PI / 2 + (i - (len - 1) / 2) * angleStep;
+                    const angle = startAngle + (i / (len - 1)) * angleRange;
                     const c = new fabric.Text(char, {
                         ...options,
-                        left: Math.cos(charAngle) * radius,
-                        top: Math.sin(charAngle) * radius,
-                        angle: (charAngle * 180 / Math.PI) + 90
+                        left: Math.cos(angle) * radius,
+                        top: Math.sin(angle) * radius,
+                        angle: (angle * 180 / Math.PI) + 90
                     });
                     group.addWithUpdate(c);
                 }
                 return group;
             },
-            bridge: (text) => {
-                const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
-                const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-                const chars = text.split('').map(c => new fabric.Text(c, options));
-                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
-                let currentX = -totalWidth / 2;
-                const len = text.length;
-                const mid = (len - 1) / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
-                    const normX = (i - mid) / (mid || 1);
-                    const y = 50 * (normX * normX) * intensity;
-                    ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width + spacing;
-                    group.addWithUpdate(ch);
-                });
-                return group;
-            },
-            bulge: (text) => {
-                const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
-                const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-                const chars = text.split('').map(c => new fabric.Text(c, options));
-                const mid = (chars.length - 1) / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
-                    const dist = Math.abs(i - mid);
-                    const maxDist = mid || 1;
-                    const scale = 1 + 0.8 * (1 - dist / maxDist) * intensity;
-                    ch.set({ fontSize: options.fontSize * scale });
-                });
-                let currentX = -chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) / 2 - (chars.length - 1) * spacing / 2;
-                chars.forEach(ch => {
-                    ch.set({ left: currentX + ch.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
-                    currentX += ch.getScaledWidth() + spacing;
-                    group.addWithUpdate(ch);
-                });
-                return group;
-            },
-            flag: (text) => {
-                const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
-                const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-                const chars = text.split('').map(c => new fabric.Text(c, options));
-                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
-                    const y = Math.sin(i * 0.5) * 20 * intensity;
-                    ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width + spacing;
-                    group.addWithUpdate(ch);
-                });
-                return group;
-            },
+
             valley: (text) => {
                 const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
+                const spacing = this._getCharSpacing();
                 const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
+                    left: 0,
+                    top: 0,
                     originX: 'center',
                     originY: 'center'
                 });
@@ -228,59 +166,116 @@ class WrapviewSVGEditor {
                 const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
                 let currentX = -totalWidth / 2;
                 const mid = (chars.length - 1) / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
+
+                chars.forEach((c, i) => {
                     const normX = (i - mid) / (mid || 1);
-                    const y = (-50 * (normX * normX) + 25) * intensity;
-                    ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width + spacing;
-                    group.addWithUpdate(ch);
+                    const y = -50 * (normX * normX) + 25;
+                    const tiltAngle = normX * -40;
+                    c.set({ left: currentX + c.width / 2, top: y, angle: tiltAngle, originX: 'center', originY: 'center' });
+                    currentX += c.width + spacing;
+                    group.addWithUpdate(c);
                 });
                 return group;
             },
-            distort: (text) => {
+
+            bulge: (text) => {
                 const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
+                const spacing = this._getCharSpacing();
                 const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
+                    left: 0,
+                    top: 0,
                     originX: 'center',
                     originY: 'center'
                 });
                 const chars = text.split('').map(c => new fabric.Text(c, options));
-                let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
-                    const skew = (i % 2 === 0) ? -20 * intensity : 20 * intensity;
-                    ch.set({ left: currentX + ch.width / 2, top: 0, skewY: skew, originX: 'center', originY: 'center' });
-                    currentX += ch.width + spacing;
-                    group.addWithUpdate(ch);
+                const mid = (chars.length - 1) / 2;
+
+                chars.forEach((c, i) => {
+                    const dist = Math.abs(i - mid);
+                    const maxDist = mid || 1;
+                    const scale = 1 + 0.8 * (1 - dist / maxDist);
+                    c.set({ fontSize: options.fontSize * scale });
+                });
+
+                const totalWidth = chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) + spacing * Math.max(chars.length - 1, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach(c => {
+                    c.set({ left: currentX + c.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
+                    currentX += c.getScaledWidth() + spacing;
+                    group.addWithUpdate(c);
                 });
                 return group;
             },
-            circle: (text) => {
+
+            flag: (text) => {
                 const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
+                const spacing = this._getCharSpacing();
                 const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
+                    left: 0,
+                    top: 0,
                     originX: 'center',
                     originY: 'center'
                 });
-                const radius = 120 * this._index3Config.intensity;
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + spacing * Math.max(chars.length - 1, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach((c, i) => {
+                    const y = Math.sin(i * 0.5) * 20;
+                    c.set({ left: currentX + c.width / 2, top: y, originX: 'center', originY: 'center' });
+                    currentX += c.width + spacing;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            distort: (text) => {
+                const options = getBaseTextOptions();
+                const spacing = this._getCharSpacing();
+                const group = new fabric.Group([], {
+                    left: 0,
+                    top: 0,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const len = chars.length;
+
+                chars.forEach((c, i) => {
+                    const progress = i / (len - 1 || 1);
+                    const scale = 0.5 + 0.5 * progress;
+                    c.set({ scaleX: scale, scaleY: scale });
+                });
+
+                const totalWidth = chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) + spacing * Math.max(chars.length - 1, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach((c, i) => {
+                    c.set({ left: currentX + c.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
+                    currentX += c.getScaledWidth() + spacing;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            circle: (text) => {
+                const options = getBaseTextOptions();
+                const spacing = this._getCharSpacing();
+                const group = new fabric.Group([], {
+                    left: 0,
+                    top: 0,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const radius = 110;
                 const len = text.length;
-                const baseAngleStep = (2 * Math.PI) / len;
-                const angleStep = baseAngleStep + (spacing / radius);
+                const angleStep = (2 * Math.PI) / len;
+
                 for (let i = 0; i < len; i++) {
                     const char = text[i];
                     const angle = i * angleStep - Math.PI / 2;
-                    const ch = new fabric.Text(char, {
+                    const c = new fabric.Text(char, {
                         ...options,
                         left: Math.cos(angle) * radius,
                         top: Math.sin(angle) * radius,
@@ -288,26 +283,55 @@ class WrapviewSVGEditor {
                         originX: 'center',
                         originY: 'center'
                     });
-                    group.addWithUpdate(ch);
+                    group.addWithUpdate(c);
                 }
+                return group;
+            },
+
+            pinch: (text) => {
+                const options = getBaseTextOptions();
+                const spacing = this._getCharSpacing();
+                const group = new fabric.Group([], {
+                    left: 0,
+                    top: 0,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const mid = (chars.length - 1) / 2;
+
+                chars.forEach((c, i) => {
+                    const dist = Math.abs(i - mid);
+                    const maxDist = mid || 1;
+                    const scale = 1 - 0.5 * (1 - dist / maxDist);
+                    c.set({ fontSize: options.fontSize * scale });
+                });
+
+                const totalWidth = chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) + spacing * Math.max(chars.length - 1, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach(c => {
+                    c.set({ left: currentX + c.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
+                    currentX += c.getScaledWidth() + spacing;
+                    group.addWithUpdate(c);
+                });
                 return group;
             }
         };
 
         const render = () => {
             this._canvas.clear();
-            const text = document.getElementById('textInput').value;
+            const text = document.getElementById('textInput')?.value || '';
             if (effects[this._currentEffect]) {
                 const obj = effects[this._currentEffect](text);
                 this._canvas.add(obj);
                 this._canvas.centerObject(obj);
                 obj.setCoords();
             }
-            const sizeLabel = document.getElementById('fontSizeLabel');
-            if (sizeLabel) sizeLabel.textContent = this._index3Config.fontSize;
             this._notifyChangeSoon();
         };
 
+        // Event listeners
         document.querySelectorAll('.effect-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
@@ -317,36 +341,22 @@ class WrapviewSVGEditor {
             });
         });
 
-        ['textInput', 'fontFamily', 'textColor', 'outlineEnabled', 'outlineColor', 'outlineWidth', 'textTransparent'].forEach(id => {
+        ['textInput', 'fontFamily', 'textColor', 'textSize', 'outlineColor', 'outlineWidth'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.addEventListener('input', render);
-            if (id === 'outlineEnabled' || id === 'textTransparent') {
-                el.addEventListener('change', render);
-            }
+            el.addEventListener('input', () => {
+                if (id === 'textColor') {
+                    el.dataset.fill = '';
+                }
+                render();
+            });
         });
 
-        const intensitySlider = document.getElementById('intensitySlider');
-        const intensityValue = document.getElementById('intensityValue');
-        if (intensitySlider && intensityValue) {
-            intensitySlider.addEventListener('input', () => {
-                this._index3Config.intensity = Number(intensitySlider.value);
-                intensityValue.textContent = Number(intensitySlider.value).toFixed(2);
-                render();
-            });
-        }
-
-        const fontInc = document.getElementById('fontInc');
-        const fontDec = document.getElementById('fontDec');
-        if (fontInc) {
-            fontInc.addEventListener('click', () => {
-                this._index3Config.fontSize = Math.min(200, this._index3Config.fontSize + 2);
-                render();
-            });
-        }
-        if (fontDec) {
-            fontDec.addEventListener('click', () => {
-                this._index3Config.fontSize = Math.max(8, this._index3Config.fontSize - 2);
+        const outlineToggleBtn = document.getElementById('outlineToggle');
+        if (outlineToggleBtn) {
+            outlineToggleBtn.addEventListener('click', () => {
+                const isEnabled = outlineToggleBtn.dataset.enabled === 'true';
+                outlineToggleBtn.dataset.enabled = (!isEnabled).toString();
                 render();
             });
         }
@@ -366,16 +376,15 @@ class WrapviewSVGEditor {
         return `
         <div class="container" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px;">
             <h1 style="color:#333;margin-bottom:20px;">Text Decorator</h1>
+            
             <div class="controls-area" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
                 <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
                     <label for="textInput" style="font-weight:600;color:#555;">Text</label>
                     <input type="text" id="textInput" value="HELLO WORLD" placeholder="Enter text" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
-                    <div style="display:flex; gap:8px; margin-top:6px; align-items:center;">
-                        <button id="fontDec" type="button" style="padding:8px 12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">-</button>
-                        <span style="font-weight:600;color:#555;">Size: <span id="fontSizeLabel">60</span></span>
-                        <button id="fontInc" type="button" style="padding:8px 12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">+</button>
-                    </div>
+                    <label for="textSize" style="font-weight:600;color:#555;">Font Size</label>
+                    <input type="number" id="textSize" value="60" min="8" max="200" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
                 </div>
+                
                 <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
                     <label for="fontFamily" style="font-weight:600;color:#555;">Font</label>
                     <select id="fontFamily" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;">
@@ -386,40 +395,40 @@ class WrapviewSVGEditor {
                         <option value="Verdana">Verdana</option>
                     </select>
                 </div>
+                
                 <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
-                    <label for="textColor" style="font-weight:600;color:#555;">Color</label>
+                    <label for="textColor" style="font-weight:600;color:#555;">Text Color</label>
                     <input type="color" id="textColor" value="#000000" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
-                    <label style="font-weight:600;color:#555; display:flex; gap:6px; align-items:center; margin-top:6px;">
-                        <input type="checkbox" id="textTransparent" /> Transparent
-                    </label>
                 </div>
+                
                 <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
                     <label style="font-weight:600;color:#555;">Outline</label>
-                    <label style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-                        <input type="checkbox" id="outlineEnabled" /> Enable Outline
-                    </label>
+                    <button id="outlineToggle" data-enabled="false" type="button" style="padding:10px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Outline Off</button>
                     <label for="outlineColor" style="font-weight:600;color:#555;font-size:14px;">Outline Color</label>
                     <input type="color" id="outlineColor" value="#000000" style="padding:6px;border:1px solid #ddd;border-radius:6px;" />
-                    <label for="outlineWidth" style="font-weight:600;color:#555;font-size:14px;">Outline Width</label>
+                    <label for="outlineWidth" style="font-weight:600;color:#555;font-size:14px;">Width (0-20)</label>
                     <input type="number" id="outlineWidth" value="2" min="0" max="20" style="padding:6px;border:1px solid #ddd;border-radius:6px;" />
                 </div>
             </div>
+            
             <div style="margin: 12px 0; display: flex; align-items: center; gap: 12px;">
                 <label for="intensitySlider" style="font-weight:600;color:#555;">Intensity:</label>
                 <input type="range" id="intensitySlider" min="0.2" max="2.5" step="0.01" value="1" style="width:180px;">
                 <span id="intensityValue" style="font-weight:600;color:#555;">1.00</span>
             </div>
+            
             <div class="effects-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px,1fr)); gap:12px; width:100%;">
                 <button class="effect-btn active" data-effect="none" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">None</button>
                 <button class="effect-btn" data-effect="arch" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Arch</button>
-                <button class="effect-btn" data-effect="bridge" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Bridge</button>
                 <button class="effect-btn" data-effect="bulge" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Bulge</button>
                 <button class="effect-btn" data-effect="flag" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Flag</button>
                 <button class="effect-btn" data-effect="valley" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Valley</button>
                 <button class="effect-btn" data-effect="distort" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Distort</button>
                 <button class="effect-btn" data-effect="circle" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Circle</button>
+                <button class="effect-btn" data-effect="pinch" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Pinch</button>
             </div>
-            <div id="canvas-wrapper" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;background-image:linear-gradient(45deg,#f0f0f0 25%,transparent 25%),linear-gradient(-45deg,#f0f0f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f0f0 75%),linear-gradient(-45deg,transparent 75%,#f0f0f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0px;display:flex;justify-content:center;">
+            
+            <div id="canvas-wrapper" style="display:none;border:1px solid #ddd;border-radius:8px;overflow:hidden;background-image:linear-gradient(45deg,#f0f0f0 25%,transparent 25%),linear-gradient(-45deg,#f0f0f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f0f0 75%),linear-gradient(-45deg,transparent 75%,#f0f0f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0px;display:flex;justify-content:center;">
                 <canvas id="c" width="2560" height="2560" style="display:block;width:360px;height:360px;"></canvas>
             </div>
         </div>`;

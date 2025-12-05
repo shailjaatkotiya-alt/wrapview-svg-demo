@@ -1068,9 +1068,125 @@ class WrapviewPatternLayer extends WrapviewImageLayer {
     }
 }
 
+class WrapviewSVGLayer extends WrapviewLayer {
+    constructor(id, settings) {
+        super(id, settings);
+        this._canvas = null;
+        this._image = null;
+        this._loaded = false;
+    }
+
+    name() {
+        return 'SVG';
+    }
+
+    defaults() {
+        return {
+            size: { width: 2560, height: 2560 },
+            pivot: { x: 0.5, y: 0.5 },
+            position: { x: 1280, y: 1280 },
+            angle: 0
+        };
+    }
+
+    /**
+     * Load SVG layer from data URL (PNG image)
+     * @param {Object} data - Contains svgData (PNG data URL)
+     * @returns {Promise} Resolves when image is loaded
+     */
+    load(data) {
+        return new Promise((resolve, reject) => {
+            if (!data.svgData) {
+                reject(new Error('No svgData provided'));
+                return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                // Create canvas from image
+                this._canvas = document.createElement('canvas');
+                this._canvas.width = this.settings.size.width;
+                this._canvas.height = this.settings.size.height;
+                const ctx = this._canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, this.settings.size.width, this.settings.size.height);
+                
+                this._image = img;
+                this._loaded = true;
+                resolve();
+            };
+            img.onerror = () => {
+                reject(new Error('Failed to load SVG data URL'));
+            };
+            img.src = data.svgData;
+        });
+    }
+
+    /**
+     * Get the canvas containing the rendered SVG
+     * @returns {HTMLCanvasElement} The internal canvas
+     */
+    getCanvas() {
+        return this._canvas;
+    }
+
+    /**
+     * Update texture from new data URL
+     * @param {string} dataUrl - PNG data URL to apply as texture
+     */
+    updateFromDataUrl(dataUrl) {
+        if (!dataUrl) return;
+        
+        return this.load({ svgData: dataUrl });
+    }
+
+    /**
+     * Draw SVG layer on canvas
+     * @param {CanvasRenderingContext2D} context - Canvas context to draw on
+     */
+    draw(context) {
+        if (!this._loaded || !this._image) return;
+        
+        context.save();
+        context.translate(this.settings.position.x, this.settings.position.y);
+        context.rotate(this.settings.angle);
+        context.drawImage(
+            this._image,
+            -this.settings.size.width * this.settings.pivot.x,
+            -this.settings.size.height * this.settings.pivot.y,
+            this.settings.size.width,
+            this.settings.size.height
+        );
+        context.rotate(-this.settings.angle);
+        context.translate(0, 0);
+        context.restore();
+    }
+
+    /**
+     * Get layer data for serialization
+     * @returns {Object} Layer data object
+     */
+    getData() {
+        return {
+            type: 'WrapviewSVGLayer',
+            settings: {
+                size: this.settings.size,
+                pivot: this.settings.pivot,
+                position: this.settings.position,
+                angle: this.settings.angle
+            }
+        };
+    }
+
+    drawHandles(context, editor) {
+        // SVG layer handles not implemented
+        return;
+    }
+}
+
 
 export {
     WrapviewImageLayer,
     WrapviewPatternLayer,
     WrapviewTextLayer,
+    WrapviewSVGLayer,
 }

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
-import { WrapviewSvgLayer } from './Wrapview/WrapviewSvgLayer.js';
+import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
 
 WrapviewSettings.init();
 
@@ -65,75 +65,77 @@ if (svgContainer && svgEditor) {
     console.warn('SVG editor or container not available.');
 }
 
-// Create SVG layer state
-let currentSvgLayer = null;
+// SVG layer and texture management
+let currentSvgLayer = new WrapviewSVGLayer('svgTextLayer', {
+    size: { width: 2560, height: 2560 },
+    pivot: { x: 0.5, y: 0.5 },
+    position: { x: 1280, y: 1280 },
+    angle: 0
+});
+let currentTextTexture = null;
 
-// Helper to create SVG layer from editor canvas
-const createSvgLayerFromEditor = () => {
-    const svgData = svgEditor.getDataURL();
-    if (!svgData) return null;
-
-    const svgLayer = new WrapviewSvgLayer('svg-layer-' + Date.now(), {
-        size: { width: 2560, height: 2560 },
-        pivot: { x: 0.5, y: 0.5 },
-        position: { x: 1280, y: 1280 },
-        angle: 0
-    });
-
-    svgLayer.load({ svgData: svgData })
-        .then(() => {
-            console.log('SVG layer loaded successfully');
-            const canvas = svgLayer.getCanvas();
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.needsUpdate = true;
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.LinearMipmapLinearFilter;
-            texture.generateMipmaps = true;
-            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            
-            const svgMaterial = new THREE.MeshBasicMaterial({ 
-                map: texture,
-                transparent: true,
-                alphaTest: 0.01
-            });
-            materials[0] = svgMaterial;
-            cube.material = materials;
-            console.log('SVG texture applied to cube front face');
-        })
-        .catch(error => console.error('Failed to load SVG layer:', error));
-
-    return svgLayer;
-};
-
-// Update cube texture when SVG editor changes
-svgEditor.setOnChange((dataUrl) => {
-    if (!currentSvgLayer) {
-        currentSvgLayer = createSvgLayerFromEditor();
+// Helper to apply text texture to cube front face
+const applyTextTextureToCube = async (dataUrl) => {
+    if (!dataUrl) {
+        console.warn('No data URL provided for texture');
         return;
     }
-    
-    currentSvgLayer.load({ svgData: dataUrl })
-        .then(() => {
-            if (materials[0].map) {
-                materials[0].map.dispose();
-            }
-            const newCanvas = currentSvgLayer.getCanvas();
-            const newTexture = new THREE.CanvasTexture(newCanvas);
-            newTexture.needsUpdate = true;
-            newTexture.magFilter = THREE.NearestFilter;
-            newTexture.minFilter = THREE.LinearMipmapLinearFilter;
-            newTexture.generateMipmaps = true;
-            newTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            materials[0].map = newTexture;
-            console.log('SVG texture updated');
-        })
-        .catch(error => console.error('Failed to update SVG layer:', error));
+
+    try {
+        // Update SVG layer with new data URL
+        await currentSvgLayer.updateFromDataUrl(dataUrl);
+        
+        // Get canvas from layer
+        const canvas = currentSvgLayer.getCanvas();
+        if (!canvas) {
+            console.error('Failed to get canvas from SVG layer');
+            return;
+        }
+
+        // Dispose old texture if it exists
+        if (currentTextTexture) {
+            currentTextTexture.dispose();
+        }
+
+        // Create texture from layer canvas
+        currentTextTexture = new THREE.CanvasTexture(canvas);
+        currentTextTexture.needsUpdate = true;
+        currentTextTexture.magFilter = THREE.NearestFilter;
+        currentTextTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        currentTextTexture.generateMipmaps = true;
+        currentTextTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+        // Apply material to cube
+        const textMaterial = new THREE.MeshBasicMaterial({
+            map: currentTextTexture,
+            transparent: true,
+            alphaTest: 0.01,
+            side: THREE.FrontSide
+        });
+
+        materials[0] = textMaterial;
+        cube.material = materials;
+        console.log('Text texture applied to cube front face via WrapviewSVGLayer');
+    } catch (error) {
+        console.error('Error applying text texture:', error);
+    }
+};
+
+// Setup editor change listener for real-time texture updates
+svgEditor.setOnChange((dataUrl) => {
+    if (dataUrl) {
+        applyTextTextureToCube(dataUrl);
+    }
 });
 
-// Initialize SVG layer on startup
+// Initialize text texture on startup
 setTimeout(() => {
-    currentSvgLayer = createSvgLayerFromEditor();
-}, 1000);
+    const initialDataUrl = svgEditor.getDataURL();
+    if (initialDataUrl) {
+        applyTextTextureToCube(initialDataUrl);
+        console.log('Initial text texture loaded via WrapviewSVGLayer');
+    }
+}, 500);
 
 function animate() {
     requestAnimationFrame(animate);
