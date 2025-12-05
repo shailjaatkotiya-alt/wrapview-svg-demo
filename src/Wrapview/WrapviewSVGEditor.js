@@ -1,36 +1,17 @@
 
-import { UIBuilder } from './UIBuilder.js';
-import { FabricObjectBuilder } from './FabricObjectBuilder.js';
-import { SelectionManager } from './SelectionManager.js';
-import { StateManager } from './StateManager.js';
-
 class WrapviewSVGEditor {
     constructor(instance) {
         this._instance = instance;
-
-        // state
-        this.mode = 'fabric';
-        this.selected = null;
         this._onChange = null;
-
-        // dom
         this._root = null;
-        this._wrapper = null;
         this._canvasEl = null;
-        this._selContainer = null;
-
-        // fabric
         this._canvas = null;
-        this._objects = new Map();
-
-        // helpers
-        this._uiBuilder = new UIBuilder(this);
-        this._objectBuilder = new FabricObjectBuilder(this);
-        this._selectionManager = new SelectionManager(this);
-        this._stateManager = new StateManager(this);
+        this._index3Config = null;
+        this._currentEffect = null;
+        this._chgT = null;
     }
 
-    // --- public API ---
+    // --- Public API ---
     attachTo(container) {
         if (typeof container === 'string') container = document.getElementById(container);
         if (!container) throw new Error('Container not found for Wrapview editor');
@@ -48,18 +29,16 @@ class WrapviewSVGEditor {
 
         ensureFabric().then(() => {
             this._root = container;
-            // Inject Index3-style UI into the container
-            this._root.innerHTML = this._buildIndex3Markup();
-            // Set references
+            this._root.innerHTML = this._buildMarkup();
             this._canvasEl = document.getElementById('c');
-            this._wrapper = this._root.querySelector('.container');
-            // Initialize Fabric and effects
-            this._initIndex3Fabric();
+            this._initFabric();
             this._notifyChangeSoon();
         }).catch(err => console.error(err));
     }
 
-    setOnChange(cb) { this._onChange = typeof cb === 'function' ? cb : null; }
+    setOnChange(cb) {
+        this._onChange = typeof cb === 'function' ? cb : null;
+    }
 
     getDataURL() {
         if (!this._canvas) return null;
@@ -67,15 +46,12 @@ class WrapviewSVGEditor {
     }
 
     // --- Core methods ---
-    _initIndex3Fabric() {
+    _initFabric() {
         this._canvas = new fabric.Canvas(this._canvasEl, { backgroundColor: null });
-        // Ensure internal canvas size is square to avoid texture stretching
         this._canvas.setWidth(360);
         this._canvas.setHeight(360);
-        this._objects.clear();
 
-        // Config mirrors Index3.html
-        this._index3Config = { fontSize: 60, radius: 150, spacing: 0 };
+        this._index3Config = { fontSize: 60, radius: 150, spacing: 0, intensity: 1 };
         this._currentEffect = 'none';
 
         const getBaseTextOptions = () => {
@@ -92,20 +68,17 @@ class WrapviewSVGEditor {
                 originY: 'center',
                 stroke: outlineEnabled ? strokeColor : undefined,
                 strokeWidth: outlineEnabled ? strokeWidth : 0,
-                paintFirst: 'stroke' // Ensures outline is drawn outside glyph
+                paintFirst: 'stroke'
             };
         };
 
-        // Effects
         const effects = {
             none: (text) => {
                 const options = getBaseTextOptions();
-                // Adjust spacing for outline
                 let spacing = 0;
                 if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7; // 0.7 is a good visual fudge factor
+                    spacing = options.strokeWidth * 0.7;
                 }
-                // If spacing is needed, render as group of chars
                 if (spacing > 0) {
                     const chars = text.split('').map(c => new fabric.Text(c, options));
                     let totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
@@ -116,7 +89,7 @@ class WrapviewSVGEditor {
                         originX: 'center',
                         originY: 'center'
                     });
-                    chars.forEach((ch, i) => {
+                    chars.forEach((ch) => {
                         ch.set({ left: currentX + ch.width / 2, top: 0, originX: 'center', originY: 'center' });
                         currentX += ch.width + spacing;
                         group.addWithUpdate(ch);
@@ -145,7 +118,6 @@ class WrapviewSVGEditor {
                 const radius = this._index3Config.radius;
                 const len = text.length;
                 const intensity = this._index3Config.intensity;
-                // Spread chars with extra angle for spacing
                 const baseAngleStep = 0.2 * intensity;
                 const angleStep = baseAngleStep + (spacing / radius);
                 for (let i = 0; i < len; i++) {
@@ -188,32 +160,6 @@ class WrapviewSVGEditor {
                 });
                 return group;
             },
-            valley: (text) => {
-                const options = getBaseTextOptions();
-                let spacing = 0;
-                if (options.stroke && options.strokeWidth > 0) {
-                    spacing = options.strokeWidth * 0.7;
-                }
-                const group = new fabric.Group([], {
-                    left: this._canvas.width / 2,
-                    top: this._canvas.height / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-                const chars = text.split('').map(c => new fabric.Text(c, options));
-                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
-                let currentX = -totalWidth / 2;
-                const mid = (chars.length - 1) / 2;
-                const intensity = this._index3Config.intensity;
-                chars.forEach((ch, i) => {
-                    const normX = (i - mid) / (mid || 1);
-                    const y = (-50 * (normX * normX) + 25) * intensity;
-                    ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
-                    currentX += ch.width + spacing;
-                    group.addWithUpdate(ch);
-                });
-                return group;
-            },
             bulge: (text) => {
                 const options = getBaseTextOptions();
                 let spacing = 0;
@@ -232,7 +178,6 @@ class WrapviewSVGEditor {
                 chars.forEach((ch, i) => {
                     const dist = Math.abs(i - mid);
                     const maxDist = mid || 1;
-                    // Intensity affects bulge
                     const scale = 1 + 0.8 * (1 - dist / maxDist) * intensity;
                     ch.set({ fontSize: options.fontSize * scale });
                 });
@@ -260,8 +205,33 @@ class WrapviewSVGEditor {
                 let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
                 const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
-                    // Intensity affects amplitude
                     const y = Math.sin(i * 0.5) * 20 * intensity;
+                    ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
+                    currentX += ch.width + spacing;
+                    group.addWithUpdate(ch);
+                });
+                return group;
+            },
+            valley: (text) => {
+                const options = getBaseTextOptions();
+                let spacing = 0;
+                if (options.stroke && options.strokeWidth > 0) {
+                    spacing = options.strokeWidth * 0.7;
+                }
+                const group = new fabric.Group([], {
+                    left: this._canvas.width / 2,
+                    top: this._canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
+                let currentX = -totalWidth / 2;
+                const mid = (chars.length - 1) / 2;
+                const intensity = this._index3Config.intensity;
+                chars.forEach((ch, i) => {
+                    const normX = (i - mid) / (mid || 1);
+                    const y = (-50 * (normX * normX) + 25) * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: y, originX: 'center', originY: 'center' });
                     currentX += ch.width + spacing;
                     group.addWithUpdate(ch);
@@ -284,7 +254,6 @@ class WrapviewSVGEditor {
                 let currentX = -chars.reduce((acc, c) => acc + c.width, 0) / 2 - (chars.length - 1) * spacing / 2;
                 const intensity = this._index3Config.intensity;
                 chars.forEach((ch, i) => {
-                    // Intensity affects skew
                     const skew = (i % 2 === 0) ? -20 * intensity : 20 * intensity;
                     ch.set({ left: currentX + ch.width / 2, top: 0, skewY: skew, originX: 'center', originY: 'center' });
                     currentX += ch.width + spacing;
@@ -306,7 +275,6 @@ class WrapviewSVGEditor {
                 });
                 const radius = 120 * this._index3Config.intensity;
                 const len = text.length;
-                // Angle step is increased to account for spacing
                 const baseAngleStep = (2 * Math.PI) / len;
                 const angleStep = baseAngleStep + (spacing / radius);
                 for (let i = 0; i < len; i++) {
@@ -335,13 +303,11 @@ class WrapviewSVGEditor {
                 this._canvas.centerObject(obj);
                 obj.setCoords();
             }
-            // Update font size label
             const sizeLabel = document.getElementById('fontSizeLabel');
             if (sizeLabel) sizeLabel.textContent = this._index3Config.fontSize;
             this._notifyChangeSoon();
         };
 
-        // Wire UI events
         document.querySelectorAll('.effect-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
@@ -350,6 +316,7 @@ class WrapviewSVGEditor {
                 render();
             });
         });
+
         ['textInput', 'fontFamily', 'textColor', 'outlineEnabled', 'outlineColor', 'outlineWidth', 'textTransparent'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -358,7 +325,7 @@ class WrapviewSVGEditor {
                 el.addEventListener('change', render);
             }
         });
-        // Intensity slider
+
         const intensitySlider = document.getElementById('intensitySlider');
         const intensityValue = document.getElementById('intensityValue');
         if (intensitySlider && intensityValue) {
@@ -368,8 +335,7 @@ class WrapviewSVGEditor {
                 render();
             });
         }
-        
-        // Font size increment/decrement
+
         const fontInc = document.getElementById('fontInc');
         const fontDec = document.getElementById('fontDec');
         if (fontInc) {
@@ -385,7 +351,6 @@ class WrapviewSVGEditor {
             });
         }
 
-        // Initial render
         render();
     }
 
@@ -397,127 +362,7 @@ class WrapviewSVGEditor {
         }, 60);
     }
 
-    _commitRender() {
-        if (!this._canvas) return;
-        this._canvas.requestRenderAll();
-        this._notifyChangeSoon();
-    }
-
-    _setProps(obj, props) {
-        obj.set(props);
-        this._commitRender();
-    }
-
-    _addObject(obj) {
-        this._canvas.add(obj);
-        this._objects.set(obj._wve.id, obj);
-        this._canvas.setActiveObject(obj);
-        this.selected = obj._wve.id;
-    }
-
-    _replaceObject(oldObj, newObj) {
-        this._canvas.remove(oldObj);
-        this._canvas.add(newObj);
-        this._objects.set(newObj._wve.id, newObj);
-        this._canvas.setActiveObject(newObj);
-        this._commitRender();
-        this.selected = newObj._wve.id;
-        this._selectionManager.updateSelectedPanel();
-    }
-
-    _clearAll() {
-        this._canvas.getObjects().forEach(o => this._canvas.remove(o));
-        this._objects.clear();
-        this._commitRender();
-    }
-
-    _getObjectAnchor(obj) {
-        if (obj.type === 'group') {
-            const pt = obj.getPointByOrigin('center', 'center');
-            return { left: pt.x, top: pt.y };
-        } else {
-            return { left: obj.left, top: obj.top };
-        }
-    }
-
-    _safeNumber(v, def = 0) {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : def;
-    }
-
-    // --- Public creators ---
-    addText(opts = {}) {
-        const id = `text-${Date.now()}`;
-        const o = this._objectBuilder.createText({
-            id,
-            left: (opts.x ?? opts.left) ?? 50,
-            top: (opts.y ?? opts.top) ?? 50,
-            text: opts.text ?? 'Your Text',
-            fontSize: opts.fontSize ?? 24,
-            fontFamily: opts.fontFamily ?? 'Arial, sans-serif',
-            fill: opts.fill ?? '#000000',
-            tMode: opts.tMode ?? null,
-            tIntensity: opts.tIntensity ?? 0
-        });
-        this._addObject(o);
-        this._selectionManager.updateSelectedPanel();
-        this._notifyChangeSoon();
-    }
-
-    addOutlineToSelectedText() {
-        const active = this._canvas.getActiveObject();
-        if (!active) {
-            alert('Please select a text object first');
-            return;
-        }
-
-        const meta = active._wve || {};
-        if (meta.type !== 'text') {
-            alert('Please select a text object');
-            return;
-        }
-
-        if (meta.isCurved) {
-            this._objectBuilder.rebuildTextObject(active, {
-                stroke: '#000000',
-                strokeWidth: 2
-            });
-        } else {
-            this._setProps(active, {
-                stroke: '#000000',
-                strokeWidth: 2
-            });
-            if (active._wve) {
-                active._wve.stroke = '#000000';
-                active._wve.strokeWidth = 2;
-            }
-        }
-
-        this._selectionManager.updateSelectedPanel();
-        this._notifyChangeSoon();
-    }
-
-    // --- State management delegation ---
-    getState() { return this._stateManager.getState(); }
-    getJSON() { return this._stateManager.getJSON(); }
-    setState(state) { return this._stateManager.setState(state); }
-    loadJSON(json) { return this._stateManager.loadJSON(json); }
-
-    // --- Getters for sub-components ---
-    getCanvas() { return this._canvas; }
-    getObjects() { return this._objects; }
-    getSelectionContainer() { return this._selContainer; }
-    getWrapper() { return this._wrapper; }
-    getCanvasElement() { return this._canvasEl; }
-    getRoot() { return this._root; }
-
-    // --- Setters for sub-components ---
-    setCanvasElement(el) { this._canvasEl = el; }
-    setSelectionContainer(el) { this._selContainer = el; }
-    setWrapper(el) { this._wrapper = el; }
-
-    // Build Index3-style markup inside main-area
-    _buildIndex3Markup() {
+    _buildMarkup() {
         return `
         <div class="container" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px;">
             <h1 style="color:#333;margin-bottom:20px;">Text Decorator</h1>
