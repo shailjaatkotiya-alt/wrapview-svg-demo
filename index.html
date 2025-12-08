@@ -44,6 +44,29 @@
         <button id="toggle-outline-btn" data-enabled="false" type="button">Outline Off</button>
       </div>
 
+      <div class="control-row font-selector-row">
+        <label class="control-label" for="font-family-select">Font</label>
+        <select id="font-family-select">
+          <option value="Impact">Impact</option>
+          <option value="Arial">Arial</option>
+          <option value="Asap Condensed">Asap Condensed</option>
+          <option value="Baloo 2">Baloo 2</option>
+          <option value="Caprasimo">Caprasimo</option>
+          <option value="Caramel">Caramel</option>
+          <option value="Playfair Display">Playfair Display</option>
+          <option value="Montserrat">Montserrat</option>
+          <option value="Roboto Mono">Roboto Mono</option>
+          <option value="Bebas Neue">Bebas Neue</option>
+          <option value="Fredoka One">Fredoka One</option>
+        </select>
+      </div>
+
+      <div class="control-row intensity-row">
+        <label class="control-label" for="font-size-slider">Size</label>
+        <input type="range" id="font-size-slider" min="20" max="150" value="60" aria-label="Font size intensity">
+        <span id="font-size-value" class="intensity-value">60</span>
+      </div>
+
       <div class="control-row effects-row" id="effects-row">
         <span class="control-label">Shape</span>
         <div class="effect-buttons">

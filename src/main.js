@@ -70,6 +70,9 @@ const fillColorInput = document.getElementById('fill-color-input');
 const outlineColorInput = document.getElementById('outline-color-input');
 const outlineWidthInput = document.getElementById('outline-width-input');
 const toggleOutlineButton = document.getElementById('toggle-outline-btn');
+const fontFamilySelect = document.getElementById('font-family-select');
+const fontSizeSlider = document.getElementById('font-size-slider');
+const fontSizeValue = document.getElementById('font-size-value');
 const effectButtons = document.querySelectorAll('.effect-btn');
 let outlineEnabled = false;
 
@@ -147,6 +150,18 @@ if (svgEditor) {
         svgEditor.setFillColor(fillColorInput.value || '#000000');
     };
 
+    const updateFontFamily = () => {
+        if (!fontFamilySelect) return;
+        svgEditor.setFontFamily(fontFamilySelect.value || 'Impact');
+    };
+
+    const updateFontSize = () => {
+        if (!fontSizeSlider) return;
+        const size = parseInt(fontSizeSlider.value) || 60;
+        if (fontSizeValue) fontSizeValue.textContent = size;
+        svgEditor.setFontSize(size);
+    };
+
     const updateOutline = () => {
         const width = parseFloat(outlineWidthInput?.value) || 0;
         const color = outlineColorInput?.value || '#000000';
@@ -182,6 +197,14 @@ if (svgEditor) {
         fillColorInput.addEventListener('input', updateFillColor);
     }
 
+    if (fontFamilySelect) {
+        fontFamilySelect.addEventListener('change', updateFontFamily);
+    }
+
+    if (fontSizeSlider) {
+        fontSizeSlider.addEventListener('input', updateFontSize);
+    }
+
     if (outlineColorInput) {
         outlineColorInput.addEventListener('input', updateOutline);
     }
@@ -203,6 +226,8 @@ if (svgEditor) {
     // Seed editor with initial UI values
     updateText();
     updateFillColor();
+    updateFontFamily();
+    updateFontSize();
     updateOutline();
     const initialEffect = Array.from(effectButtons).find(b => b.classList.contains('active'))?.dataset.effect || 'none';
     setEffect(initialEffect);

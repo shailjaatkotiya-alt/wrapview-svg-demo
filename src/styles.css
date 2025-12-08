@@ -1,3 +1,6 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700&family=Caprasimo&family=Caramel&family=Playfair+Display:wght@700;900&family=Montserrat:wght@400;700;900&family=Roboto+Mono:wght@400;700&family=Bebas+Neue&family=Fredoka+One&display=swap');
+
 body {
     margin: 0;
     overflow: hidden;
@@ -103,6 +106,93 @@ body {
 
 .effects-row {
     align-items: flex-start;
+}
+
+.font-selector-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.font-selector-row .control-label {
+    min-width: auto;
+}
+
+#font-family-select {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 15px;
+    background: #fff;
+    cursor: pointer;
+}
+
+#font-family-select option {
+    padding: 10px;
+    font-size: 14px;
+}
+
+.intensity-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.intensity-row .control-label {
+    min-width: auto;
+}
+
+#font-size-slider {
+    flex: 1;
+    min-width: 150px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #ddd 0%, #ddd 100%);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+#font-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0a6b73;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#font-size-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0a6b73;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#font-size-slider:hover::-webkit-slider-thumb {
+    background: #084f57;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+#font-size-slider:hover::-moz-range-thumb {
+    background: #084f57;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.intensity-value {
+    font-weight: 600;
+    color: #0a6b73;
+    min-width: 35px;
+    text-align: right;
+    font-size: 14px;
 }
 
 .effect-buttons {
