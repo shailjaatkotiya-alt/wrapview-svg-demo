@@ -11,7 +11,7 @@ import {
 } from 'three';
 import {WrapviewSettings} from "./WrapviewSettings.js";
 import {WrapviewEditor} from "./WrapviewEditor.js";
-import {WrapviewSVGEditor} from "./WrapviewSVGEditor.js";
+import {WrapviewSVGEditor} from "./WrapviewSvgEditor.js";
 class WrapviewInstance {
     constructor(id, settings) {
         this.id = id;

@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wrapview Demo</title>
   <link rel="stylesheet" href="src/styles.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700&family=Caprasimo&family=Caramel&display=swap" rel="stylesheet">
   <!-- provide lodash as a global `_` for legacy code that expects it -->
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
@@ -21,7 +25,41 @@
 </head>
 
 <body>
-  <div id="main-area"></div>
+  <div id="main-area">
+    <div id="controls-panel">
+      <div class="control-row">
+        <label class="control-label" for="quick-text-input">Text</label>
+        <input type="text" id="quick-text-input" placeholder="Enter text" value="HELLO WORLD">
+      </div>
+
+      <div class="control-row">
+        <label class="control-label" for="fill-color-input">Color</label>
+        <input type="color" id="fill-color-input" value="#000000">
+      </div>
+
+      <div class="control-row">
+        <label class="control-label" for="outline-color-input">Outline</label>
+        <input type="color" id="outline-color-input" value="#000000">
+        <input type="number" id="outline-width-input" value="2" min="0" max="20" aria-label="Outline width">
+        <button id="toggle-outline-btn" data-enabled="false" type="button">Outline Off</button>
+      </div>
+
+      <div class="control-row effects-row" id="effects-row">
+        <span class="control-label">Shape</span>
+        <div class="effect-buttons">
+          <button class="effect-btn active" data-effect="none" type="button">None</button>
+          <button class="effect-btn" data-effect="arch" type="button">Arch</button>
+          <button class="effect-btn" data-effect="bulge" type="button">Bulge</button>
+          <button class="effect-btn" data-effect="flag" type="button">Flag</button>
+          <button class="effect-btn" data-effect="valley" type="button">Valley</button>
+          <button class="effect-btn" data-effect="distort" type="button">Distort</button>
+          <button class="effect-btn" data-effect="circle" type="button">Circle</button>
+          <button class="effect-btn" data-effect="pinch" type="button">Pinch</button>
+        </div>
+      </div>
+    </div>
+    <div id="editor-panel"></div>
+  </div>
   <div id="viewer-container"></div>
 </body>
 

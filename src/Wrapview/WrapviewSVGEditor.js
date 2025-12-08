@@ -7,14 +7,18 @@ class WrapviewSVGEditor {
         this._canvas = null;
         this._currentEffect = 'none';
         this._chgT = null;
-        this._textColorPalette = [
-            'transparent',
-            '#ffffff', '#dcdcdc', '#222222', '#4b4b4b', '#6b6b6b', '#ff008c', '#ff9cb3', '#ff85b6',
-            '#b14b8e', '#6a1c2a', '#c3132c', '#e33b3b', '#f56c1d', '#f5a021', '#f1b22a', '#f7c529',
-            '#ffe976', '#815520', '#64c9b8', '#9edb2a', '#218e3f', '#0c6b45', '#2e4a34', '#0a6b73',
-            '#00a3c6', '#00a8f1', '#8bc4f6', '#126ca3', '#0d43c8', '#123767', '#0e3557', '#9c75c7',
-            '#c218a8'
-        ];
+        this._renderFn = null;
+        this._canvasId = `wve-canvas-${Math.random().toString(36).slice(2)}`;
+        this._state = {
+            text: 'HELLO WORLD',
+            fontSize: 60,
+            fontFamily: 'Impact',
+            fillColor: '#000000',
+            outlineEnabled: false,
+            outlineColor: '#000000',
+            outlineWidth: 2,
+            effect: 'none'
+        };
     }
 
     // --- Public API ---
@@ -36,7 +40,7 @@ class WrapviewSVGEditor {
         ensureFabric().then(() => {
             this._root = container;
             this._root.innerHTML = this._buildMarkup();
-            this._canvasEl = document.getElementById('c');
+            this._canvasEl = document.getElementById(this._canvasId);
             this._initFabric();
             this._notifyChangeSoon();
         }).catch(err => console.error(err));
@@ -51,41 +55,70 @@ class WrapviewSVGEditor {
         return this._canvas.toDataURL({ format: 'png', multiplier: 1, enableRetinaScaling: false });
     }
 
+    setText(text) {
+        if (typeof text !== 'string') return;
+        this._setState({ text });
+    }
+
+    setFillColor(color) {
+        if (typeof color !== 'string') return;
+        this._setState({ fillColor: color });
+    }
+
+    setOutline(params) {
+        const next = { ...this._state };
+        if (typeof params?.enabled === 'boolean') next.outlineEnabled = params.enabled;
+        if (typeof params?.color === 'string') next.outlineColor = params.color;
+        if (Number.isFinite(params?.width)) next.outlineWidth = Math.max(0, params.width);
+        this._setState(next);
+    }
+
+    setEffect(effect) {
+        if (typeof effect !== 'string') return;
+        this._setState({ effect });
+    }
+
+    setFontSize(size) {
+        if (!Number.isFinite(size) || size <= 0) return;
+        this._setState({ fontSize: size });
+    }
+
+    setFontFamily(font) {
+        if (typeof font !== 'string' || !font.trim()) return;
+        this._setState({ fontFamily: font });
+    }
+
     // --- Helper methods ---
     _isOutlineEnabled() {
-        return document.getElementById('outlineToggle')?.dataset.enabled === 'true';
+        return !!this._state.outlineEnabled;
     }
 
     _getStrokeWidth() {
-        return parseFloat(document.getElementById('outlineWidth')?.value) || 0;
+        return this._state.outlineEnabled ? (this._state.outlineWidth || 0) : 0;
     }
 
     _getFontSize() {
-        const val = parseFloat(document.getElementById('textSize')?.value);
+        const val = this._state.fontSize;
         return Number.isFinite(val) && val > 0 ? val : 60;
     }
 
     _getCharSpacing() {
-        const strokeWidth = this._isOutlineEnabled() ? this._getStrokeWidth() : 0;
+        const strokeWidth = this._getStrokeWidth();
         return strokeWidth * 0.6;
     }
 
     _getFillColor() {
-        const input = document.getElementById('textColor');
-        const explicit = input?.dataset.fill;
-        if (explicit === 'transparent') return 'transparent';
-        return input?.value || '#000000';
+        return this._state.fillColor || '#000000';
     }
 
     _getBaseTextOptions() {
         const outlineEnabled = this._isOutlineEnabled();
-        const strokeColor = document.getElementById('outlineColor')?.value || '#000000';
         const strokeWidth = this._getStrokeWidth();
         return {
             fontSize: this._getFontSize(),
-            fontFamily: document.getElementById('fontFamily')?.value || 'Arial',
+            fontFamily: this._state.fontFamily || 'Arial',
             fill: this._getFillColor(),
-            stroke: outlineEnabled ? strokeColor : undefined,
+            stroke: outlineEnabled ? this._state.outlineColor : undefined,
             strokeWidth: outlineEnabled ? strokeWidth : 0,
             strokeUniform: true,
             originX: 'center',
@@ -95,6 +128,10 @@ class WrapviewSVGEditor {
 
     // --- Core methods ---
     _initFabric() {
+        if (!this._canvasEl) {
+            console.warn('WrapviewSVGEditor canvas element not found');
+            return;
+        }
         this._canvas = new fabric.Canvas(this._canvasEl, { backgroundColor: null });
         this._canvas.setWidth(2560);
         this._canvas.setHeight(2560);
@@ -321,7 +358,8 @@ class WrapviewSVGEditor {
 
         const render = () => {
             this._canvas.clear();
-            const text = document.getElementById('textInput')?.value || '';
+            const text = this._state.text || '';
+            this._currentEffect = this._state.effect || 'none';
             if (effects[this._currentEffect]) {
                 const obj = effects[this._currentEffect](text);
                 this._canvas.add(obj);
@@ -331,35 +369,7 @@ class WrapviewSVGEditor {
             this._notifyChangeSoon();
         };
 
-        // Event listeners
-        document.querySelectorAll('.effect-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this._currentEffect = e.target.dataset.effect;
-                render();
-            });
-        });
-
-        ['textInput', 'fontFamily', 'textColor', 'textSize', 'outlineColor', 'outlineWidth'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('input', () => {
-                if (id === 'textColor') {
-                    el.dataset.fill = '';
-                }
-                render();
-            });
-        });
-
-        const outlineToggleBtn = document.getElementById('outlineToggle');
-        if (outlineToggleBtn) {
-            outlineToggleBtn.addEventListener('click', () => {
-                const isEnabled = outlineToggleBtn.dataset.enabled === 'true';
-                outlineToggleBtn.dataset.enabled = (!isEnabled).toString();
-                render();
-            });
-        }
+        this._renderFn = render;
 
         render();
     }
@@ -374,64 +384,16 @@ class WrapviewSVGEditor {
 
     _buildMarkup() {
         return `
-        <div class="container" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px;">
-            <h1 style="color:#333;margin-bottom:20px;">Text Decorator</h1>
-            
-            <div class="controls-area" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
-                <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
-                    <label for="textInput" style="font-weight:600;color:#555;">Text</label>
-                    <input type="text" id="textInput" value="HELLO WORLD" placeholder="Enter text" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
-                    <label for="textSize" style="font-weight:600;color:#555;">Font Size</label>
-                    <input type="number" id="textSize" value="60" min="8" max="200" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
-                </div>
-                
-                <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
-                    <label for="fontFamily" style="font-weight:600;color:#555;">Font</label>
-                    <select id="fontFamily" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;">
-                        <option value="Arial">Arial</option>
-                        <option value="Impact" selected>Impact</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Courier New">Courier New</option>
-                        <option value="Verdana">Verdana</option>
-                    </select>
-                </div>
-                
-                <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
-                    <label for="textColor" style="font-weight:600;color:#555;">Text Color</label>
-                    <input type="color" id="textColor" value="#000000" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:16px;" />
-                </div>
-                
-                <div class="input-group" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px;">
-                    <label style="font-weight:600;color:#555;">Outline</label>
-                    <button id="outlineToggle" data-enabled="false" type="button" style="padding:10px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Outline Off</button>
-                    <label for="outlineColor" style="font-weight:600;color:#555;font-size:14px;">Outline Color</label>
-                    <input type="color" id="outlineColor" value="#000000" style="padding:6px;border:1px solid #ddd;border-radius:6px;" />
-                    <label for="outlineWidth" style="font-weight:600;color:#555;font-size:14px;">Width (0-20)</label>
-                    <input type="number" id="outlineWidth" value="2" min="0" max="20" style="padding:6px;border:1px solid #ddd;border-radius:6px;" />
-                </div>
-            </div>
-            
-            <div style="margin: 12px 0; display: flex; align-items: center; gap: 12px;">
-                <label for="intensitySlider" style="font-weight:600;color:#555;">Intensity:</label>
-                <input type="range" id="intensitySlider" min="0.2" max="2.5" step="0.01" value="1" style="width:180px;">
-                <span id="intensityValue" style="font-weight:600;color:#555;">1.00</span>
-            </div>
-            
-            <div class="effects-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px,1fr)); gap:12px; width:100%;">
-                <button class="effect-btn active" data-effect="none" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">None</button>
-                <button class="effect-btn" data-effect="arch" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Arch</button>
-                <button class="effect-btn" data-effect="bulge" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Bulge</button>
-                <button class="effect-btn" data-effect="flag" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Flag</button>
-                <button class="effect-btn" data-effect="valley" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Valley</button>
-                <button class="effect-btn" data-effect="distort" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Distort</button>
-                <button class="effect-btn" data-effect="circle" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Circle</button>
-                <button class="effect-btn" data-effect="pinch" style="padding:12px;border:none;background-color:#e4e6eb;color:#050505;border-radius:6px;cursor:pointer;font-weight:600;">Pinch</button>
-            </div>
-            
-            <div id="canvas-wrapper" style="display:none;border:1px solid #ddd;border-radius:8px;overflow:hidden;background-image:linear-gradient(45deg,#f0f0f0 25%,transparent 25%),linear-gradient(-45deg,#f0f0f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f0f0 75%),linear-gradient(-45deg,transparent 75%,#f0f0f0 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0px;display:flex;justify-content:center;">
-                <canvas id="c" width="2560" height="2560" style="display:block;width:360px;height:360px;"></canvas>
-            </div>
+        <div class="wve-canvas-shell">
+            <canvas id="${this._canvasId}" width="2560" height="2560" class="wve-canvas"></canvas>
         </div>`;
+    }
+
+    _setState(partial) {
+        this._state = { ...this._state, ...partial };
+        if (typeof this._renderFn === 'function') {
+            this._renderFn();
+        }
     }
 }
 

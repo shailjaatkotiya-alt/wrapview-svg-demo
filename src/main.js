@@ -57,13 +57,21 @@ dirLight.castShadow = true;
 scene.add(dirLight);
 
 // Setup SVG text editor
-const svgContainer = document.getElementById('main-area');
+const svgContainer = document.getElementById('editor-panel');
 const svgEditor = wrapviewInstance.svgEditor();
 if (svgContainer && svgEditor) {
     svgEditor.attachTo(svgContainer);
 } else {
     console.warn('SVG editor or container not available.');
 }
+
+const quickTextInput = document.getElementById('quick-text-input');
+const fillColorInput = document.getElementById('fill-color-input');
+const outlineColorInput = document.getElementById('outline-color-input');
+const outlineWidthInput = document.getElementById('outline-width-input');
+const toggleOutlineButton = document.getElementById('toggle-outline-btn');
+const effectButtons = document.querySelectorAll('.effect-btn');
+let outlineEnabled = false;
 
 // SVG layer and texture management
 let currentSvgLayer = new WrapviewSVGLayer('svgTextLayer', {
@@ -122,20 +130,94 @@ const applyTextTextureToCube = async (dataUrl) => {
 };
 
 // Setup editor change listener for real-time texture updates
-svgEditor.setOnChange((dataUrl) => {
-    if (dataUrl) {
-        applyTextTextureToCube(dataUrl);
+if (svgEditor) {
+    svgEditor.setOnChange((dataUrl) => {
+        if (dataUrl) {
+            applyTextTextureToCube(dataUrl);
+        }
+    });
+
+    const updateText = () => {
+        if (!quickTextInput) return;
+        svgEditor.setText(quickTextInput.value || '');
+    };
+
+    const updateFillColor = () => {
+        if (!fillColorInput) return;
+        svgEditor.setFillColor(fillColorInput.value || '#000000');
+    };
+
+    const updateOutline = () => {
+        const width = parseFloat(outlineWidthInput?.value) || 0;
+        const color = outlineColorInput?.value || '#000000';
+        svgEditor.setOutline({ enabled: outlineEnabled, color, width });
+    };
+
+    const toggleOutline = () => {
+        outlineEnabled = !outlineEnabled;
+        if (toggleOutlineButton) {
+            toggleOutlineButton.dataset.enabled = outlineEnabled.toString();
+            toggleOutlineButton.textContent = outlineEnabled ? 'Outline On' : 'Outline Off';
+        }
+        updateOutline();
+    };
+
+    const setEffect = (effect) => {
+        if (!effect) return;
+        svgEditor.setEffect(effect);
+        effectButtons.forEach(btn => {
+            if (btn.dataset.effect === effect) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    };
+
+    if (quickTextInput) {
+        quickTextInput.addEventListener('input', updateText);
     }
-});
+
+    if (fillColorInput) {
+        fillColorInput.addEventListener('input', updateFillColor);
+    }
+
+    if (outlineColorInput) {
+        outlineColorInput.addEventListener('input', updateOutline);
+    }
+
+    if (outlineWidthInput) {
+        outlineWidthInput.addEventListener('input', updateOutline);
+    }
+
+    if (toggleOutlineButton) {
+        toggleOutlineButton.addEventListener('click', toggleOutline);
+    }
+
+    if (effectButtons.length) {
+        effectButtons.forEach(btn => {
+            btn.addEventListener('click', () => setEffect(btn.dataset.effect));
+        });
+    }
+
+    // Seed editor with initial UI values
+    updateText();
+    updateFillColor();
+    updateOutline();
+    const initialEffect = Array.from(effectButtons).find(b => b.classList.contains('active'))?.dataset.effect || 'none';
+    setEffect(initialEffect);
+}
 
 // Initialize text texture on startup
-setTimeout(() => {
-    const initialDataUrl = svgEditor.getDataURL();
-    if (initialDataUrl) {
-        applyTextTextureToCube(initialDataUrl);
-        console.log('Initial text texture loaded via WrapviewSVGLayer');
-    }
-}, 500);
+if (svgEditor) {
+    setTimeout(() => {
+        const initialDataUrl = svgEditor.getDataURL();
+        if (initialDataUrl) {
+            applyTextTextureToCube(initialDataUrl);
+            console.log('Initial text texture loaded via WrapviewSVGLayer');
+        }
+    }, 500);
+}
 
 function animate() {
     requestAnimationFrame(animate);
