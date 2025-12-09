@@ -128,7 +128,7 @@ const applyTextTextureToCube = async (dataUrl) => {
             side: THREE.FrontSide
         });
 
-        materials[0] = textMaterial;
+        materials[4] = textMaterial;
         cube.material = materials;
         console.log('Text texture applied to cube front face via WrapviewSVGLayer');
     } catch (error) {
