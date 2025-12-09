@@ -20,7 +20,6 @@
       }
     }
   </script>
-  <!-- <script type="module" src="./src/main-svg.js" defer></script> -->
   <script type="module" src="./src/main.js" defer></script>
 </head>
 
@@ -74,11 +73,22 @@
           <button class="effect-btn" data-effect="arch" type="button">Arch</button>
           <button class="effect-btn" data-effect="bulge" type="button">Bulge</button>
           <button class="effect-btn" data-effect="flag" type="button">Flag</button>
-          <button class="effect-btn" data-effect="valley" type="button">Valley</button>
           <button class="effect-btn" data-effect="distort" type="button">Distort</button>
+          <button class="effect-btn" data-effect="Adistort" type="button">Adistort</button>
           <button class="effect-btn" data-effect="circle" type="button">Circle</button>
           <button class="effect-btn" data-effect="pinch" type="button">Pinch</button>
         </div>
+      </div>
+
+      <div class="control-row">
+        <label class="control-label" for="char-spacing-slider">Character Spacing</label>
+        <input type="range" id="char-spacing-slider" min="0" max="50" value="0" aria-label="Character spacing intensity">
+        <span id="char-spacing-value" class="intensity-value">0</span>
+      </div>
+      <div class="control-row">
+        <label class="control-label" for="shape-intensity-slider">Shape Intensity</label>
+        <input type="range" id="shape-intensity-slider" min="0" max="100" value="100" aria-label="Shape intensity">
+        <span id="shape-intensity-value" class="intensity-value">100</span>
       </div>
     </div>
     <div id="editor-panel"></div>

@@ -3,6 +3,7 @@ import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
 import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewSVGEditor } from './Wrapview/WrapviewSVGEditor.js'; // Ensure this import is present
 
 WrapviewSettings.init();
 
@@ -74,6 +75,10 @@ const fontFamilySelect = document.getElementById('font-family-select');
 const fontSizeSlider = document.getElementById('font-size-slider');
 const fontSizeValue = document.getElementById('font-size-value');
 const effectButtons = document.querySelectorAll('.effect-btn');
+const charSpacingSlider = document.getElementById('char-spacing-slider');
+const charSpacingValue = document.getElementById('char-spacing-value');
+const shapeIntensitySlider = document.getElementById('shape-intensity-slider');
+const shapeIntensityValue = document.getElementById('shape-intensity-value');
 let outlineEnabled = false;
 
 // SVG layer and texture management
@@ -189,6 +194,22 @@ if (svgEditor) {
         });
     };
 
+    const updateCharSpacing = () => {
+        const spacing = parseInt(charSpacingSlider.value) || 0;
+        charSpacingValue.textContent = spacing;
+        if (svgEditor) {
+            svgEditor.setCharSpacing(spacing);
+        }
+    };
+
+    const updateShapeIntensity = () => {
+        const intensity = parseInt(shapeIntensitySlider.value) || 100;
+        shapeIntensityValue.textContent = intensity;
+        if (svgEditor) {
+            svgEditor.setShapeIntensity(intensity);
+        }
+    };
+
     if (quickTextInput) {
         quickTextInput.addEventListener('input', updateText);
     }
@@ -223,12 +244,17 @@ if (svgEditor) {
         });
     }
 
+    charSpacingSlider.addEventListener('input', updateCharSpacing);
+    shapeIntensitySlider.addEventListener('input', updateShapeIntensity);
+
     // Seed editor with initial UI values
     updateText();
     updateFillColor();
     updateFontFamily();
     updateFontSize();
     updateOutline();
+    updateCharSpacing();
+    updateShapeIntensity();
     const initialEffect = Array.from(effectButtons).find(b => b.classList.contains('active'))?.dataset.effect || 'none';
     setEffect(initialEffect);
 }

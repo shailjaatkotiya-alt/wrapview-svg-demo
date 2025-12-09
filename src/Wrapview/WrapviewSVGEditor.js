@@ -17,7 +17,9 @@ class WrapviewSVGEditor {
             outlineEnabled: false,
             outlineColor: '#000000',
             outlineWidth: 2,
-            effect: 'none'
+            effect: 'none',
+            charSpacing: 0,
+            shapeIntensity: 100 // This will be used to adjust the shape effects
         };
     }
 
@@ -88,6 +90,16 @@ class WrapviewSVGEditor {
         this._setState({ fontFamily: font });
     }
 
+    setCharSpacing(spacing) {
+        if (!Number.isFinite(spacing) || spacing < 0) return;
+        this._setState({ charSpacing: spacing });
+    }
+
+    setShapeIntensity(intensity) {
+        if (!Number.isFinite(intensity) || intensity < 0) return;
+        this._setState({ shapeIntensity: intensity });
+    }
+
     // --- Helper methods ---
     _isOutlineEnabled() {
         return !!this._state.outlineEnabled;
@@ -103,8 +115,11 @@ class WrapviewSVGEditor {
     }
 
     _getCharSpacing() {
-        const strokeWidth = this._getStrokeWidth();
-        return strokeWidth * 0.6;
+        return this._state.charSpacing || 0;
+    }
+
+    _getShapeIntensity() {
+        return this._state.shapeIntensity || 100;
     }
 
     _getFillColor() {
@@ -135,9 +150,6 @@ class WrapviewSVGEditor {
         this._canvas = new fabric.Canvas(this._canvasEl, { backgroundColor: null });
         this._canvas.setWidth(2560);
         this._canvas.setHeight(2560);
-
-        this._config = { fontSize: 60, radius: 150, spacing: 0, intensity: 1 };
-        this._currentEffect = 'none';
 
         const getBaseTextOptions = () => this._getBaseTextOptions();
 
@@ -171,9 +183,9 @@ class WrapviewSVGEditor {
                     originX: 'center',
                     originY: 'center'
                 });
-                const radius = 130;
+                const radius = this._getShapeIntensity() * 1.5; // Adjust radius based on shape intensity
                 const len = text.length;
-                const angleRange = Math.PI * 0.8;
+                const angleRange = Math.PI * 0.8 * (this._getShapeIntensity() / 100); // Adjust angle range
                 const startAngle = -Math.PI / 2 - angleRange / 2;
 
                 for (let i = 0; i < len; i++) {
@@ -187,31 +199,6 @@ class WrapviewSVGEditor {
                     });
                     group.addWithUpdate(c);
                 }
-                return group;
-            },
-
-            valley: (text) => {
-                const options = getBaseTextOptions();
-                const spacing = this._getCharSpacing();
-                const group = new fabric.Group([], {
-                    left: 0,
-                    top: 0,
-                    originX: 'center',
-                    originY: 'center'
-                });
-                const chars = text.split('').map(c => new fabric.Text(c, options));
-                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + (chars.length - 1) * spacing;
-                let currentX = -totalWidth / 2;
-                const mid = (chars.length - 1) / 2;
-
-                chars.forEach((c, i) => {
-                    const normX = (i - mid) / (mid || 1);
-                    const y = -50 * (normX * normX) + 25;
-                    const tiltAngle = normX * -40;
-                    c.set({ left: currentX + c.width / 2, top: y, angle: tiltAngle, originX: 'center', originY: 'center' });
-                    currentX += c.width + spacing;
-                    group.addWithUpdate(c);
-                });
                 return group;
             },
 
@@ -230,7 +217,7 @@ class WrapviewSVGEditor {
                 chars.forEach((c, i) => {
                     const dist = Math.abs(i - mid);
                     const maxDist = mid || 1;
-                    const scale = 1 + 0.8 * (1 - dist / maxDist);
+                    const scale = 1 + (0.8 * (1 - dist / maxDist) * (this._getShapeIntensity() / 100)); // Adjust scale based on shape intensity
                     c.set({ fontSize: options.fontSize * scale });
                 });
 
@@ -288,7 +275,36 @@ class WrapviewSVGEditor {
                 const totalWidth = chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) + spacing * Math.max(chars.length - 1, 0);
                 let currentX = -totalWidth / 2;
 
+                chars.forEach(c => {
+                    c.set({ left: currentX + c.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
+                    currentX += c.getScaledWidth() + spacing;
+                    group.addWithUpdate(c);
+                });
+                return group;
+            },
+
+            Adistort: (text) => {
+                const options = getBaseTextOptions();
+                const spacing = this._getCharSpacing();
+                const group = new fabric.Group([], {
+                    left: 0,
+                    top: 0,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const len = chars.length;
+
                 chars.forEach((c, i) => {
+                    const progress = i / (len - 1 || 1);
+                    const scale = 1.5 - 0.5 * progress; // Inverted scale for Adistort
+                    c.set({ scaleX: scale, scaleY: scale });
+                });
+
+                const totalWidth = chars.reduce((acc, c) => acc + c.getScaledWidth(), 0) + spacing * Math.max(chars.length - 1, 0);
+                let currentX = -totalWidth / 2;
+
+                chars.forEach(c => {
                     c.set({ left: currentX + c.getScaledWidth() / 2, top: 0, originX: 'center', originY: 'center' });
                     currentX += c.getScaledWidth() + spacing;
                     group.addWithUpdate(c);
@@ -340,7 +356,7 @@ class WrapviewSVGEditor {
                 chars.forEach((c, i) => {
                     const dist = Math.abs(i - mid);
                     const maxDist = mid || 1;
-                    const scale = 1 - 0.5 * (1 - dist / maxDist);
+                    const scale = 1 - (this._getShapeIntensity() / 100) * (1 - dist / maxDist); // Adjust scale based on shape intensity
                     c.set({ fontSize: options.fontSize * scale });
                 });
 
