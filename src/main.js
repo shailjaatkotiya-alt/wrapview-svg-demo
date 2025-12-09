@@ -82,9 +82,9 @@ let outlineEnabled = false;
 
 // SVG layer and texture management
 let currentSvgLayer = new WrapviewSVGLayer('svgTextLayer', {
-    size: { width: 2560, height: 2560 },
+    size: { width: 2048, height: 2048 },
     pivot: { x: 0.5, y: 0.5 },
-    position: { x: 1280, y: 1280 },
+    position: { x: 1024, y: 1024 },
     angle: 0
 });
 let currentTextTexture = null;

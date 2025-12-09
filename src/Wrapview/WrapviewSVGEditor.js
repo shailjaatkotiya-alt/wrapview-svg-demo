@@ -185,27 +185,39 @@ class WrapviewSVGEditor {
                 });
                 
                 const intensity = this._getShapeIntensity() / 100; // Normalize intensity to a 0-1 range
-                const radius = 250 * intensity; // Increased radius for less curvature
-                const len = text.length;
-                const angleRange = Math.PI * 0.5 * intensity; // Reduced angle range for less curvature (was Math.PI)
-                const startAngle = -Math.PI / 2 - angleRange / 2;
-
-                for (let i = 0; i < len; i++) {
-                    const char = text[i];
-                    const angle = startAngle + (i / (len - 1)) * angleRange;
-                    const c = new fabric.Text(char, {
-                        ...options,
-                        left: Math.cos(angle) * radius,
-                        top: Math.sin(angle) * radius,
-                        angle: (angle * 180 / Math.PI) + 90
+                const chars = text.split('').map(c => new fabric.Text(c, options));
+                const len = chars.length;
+                
+                // Calculate total width including spacing
+                const totalWidth = chars.reduce((acc, c) => acc + c.width, 0) + spacing * Math.max(len - 1, 0);
+                
+                // Parabolic curve parameters (opening downwards)
+                const curveHeight = 150 * intensity; // Depth of the parabola
+                const a = (4 * curveHeight) / (totalWidth * totalWidth); // Parabola coefficient
+                
+                let currentX = -totalWidth / 2;
+                
+                chars.forEach((c, i) => {
+                    const charCenterX = currentX + c.width / 2;
+                    
+                    // Calculate Y position using parabolic equation: y = a * x^2 (positive opens downwards)
+                    const y = a * charCenterX * charCenterX;
+                    
+                    // Calculate tangent angle for character rotation
+                    const tangentSlope = 2 * a * charCenterX;
+                    const angle = Math.atan(tangentSlope) * (180 / Math.PI);
+                    
+                    c.set({
+                        left: charCenterX,
+                        top: y,
+                        angle: angle,
+                        originX: 'center',
+                        originY: 'center'
                     });
+                    
                     group.addWithUpdate(c);
-                }
-
-                // Adjust character spacing
-                const totalWidth = (len - 1) * spacing; // Calculate total spacing
-                const offset = totalWidth / 2; // Center the spacing offset
-                group.left -= offset; // Adjust group position to center
+                    currentX += c.width + spacing;
+                });
 
                 return group;
             },
