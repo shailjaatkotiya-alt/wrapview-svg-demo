@@ -1,8 +1,8 @@
-import {WrapviewTexture} from "./WrapviewTexture.js";
-import {WrapviewPatternLayer} from "./WrapviewLayer.js";
-import {WrapviewSettings} from "./WrapviewSettings.js";
+import { WrapviewTexture } from "./WrapviewTexture";
+import { WrapviewPatternLayer } from "./WrapviewLayer";
+import { WrapviewSettings } from "./WrapviewSettings";
 
-class WrapviewFabric {
+export class WrapviewFabric {
     constructor(id, settings) {
         this.id = id;
         this.settings = {};
@@ -23,40 +23,40 @@ class WrapviewFabric {
         }
     }
 
-    fetch(){
-        return new Promise((resolve, reject)=>{
-            var url = '/api/fabrics/'+this.id;
+    fetch() {
+        return new Promise((resolve, reject) => {
+            var url = '/api/fabrics/' + this.id;
             axios(url, {
-                method:'get',
+                method: 'get',
                 params: {},
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 responseType: 'json',
             })
-            .then((response) => {
+                .then((response) => {
 
-                this._data = response.data.object;
-                this._buildNormalTexture().then(()=>{
-                    this._buildDiffuseLayer().then(()=>{
-                        resolve();
+                    this._data = response.data.object;
+                    this._buildNormalTexture().then(() => {
+                        this._buildDiffuseLayer().then(() => {
+                            resolve();
+                        });
                     });
+                })
+                .catch((error) => {
+                    console.log(error)
+                    reject(error);
                 });
-            })
-            .catch((error) => {
-                console.log(error)
-                reject(error);
-            });
         });
     }
 
     _buildNormalTexture() {
-        return new Promise((resolve, reject)=>{
-            if(!WrapviewSettings.agent.loadNormalMaps) {
+        return new Promise((resolve, reject) => {
+            if (!WrapviewSettings.agent.loadNormalMaps) {
                 resolve();
                 return;
             }
-            if(this._data.normal === null) {
+            if (this._data.normal === null) {
                 resolve();
                 return;
             }
@@ -79,8 +79,8 @@ class WrapviewFabric {
             normalLayer.load({
                 path: this._data.normal
             }).then(() => {
-               resolve();
-            },(error)=>{
+                resolve();
+            }, (error) => {
                 console.log(error);
                 reject(error);
             });
@@ -88,13 +88,13 @@ class WrapviewFabric {
     }
 
     _buildDiffuseLayer() {
-        return new Promise((resolve, reject)=>{
-           if(this._data.diffuse === null) {
-               resolve();
-               return;
-           }
+        return new Promise((resolve, reject) => {
+            if (this._data.diffuse === null) {
+                resolve();
+                return;
+            }
             var uid = guid();
-            this._diffuseLayer= new WrapviewPatternLayer(uid, {
+            this._diffuseLayer = new WrapviewPatternLayer(uid, {
                 tile: {
                     x: (this.settings.size.width / this.settings.tiling),
                     y: (this.settings.size.height / this.settings.tiling)
@@ -118,13 +118,8 @@ class WrapviewFabric {
         return this._diffuseLayer;
     }
     render(context) {
-        if(this._diffuseLayer === null) return;
+        if (this._diffuseLayer === null) return;
         this._diffuseLayer.draw(context);
     }
 
-}
-
-
-export {
-    WrapviewFabric
 }

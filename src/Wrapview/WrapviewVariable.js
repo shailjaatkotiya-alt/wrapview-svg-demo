@@ -1,4 +1,4 @@
-class WrapviewVariable {
+export class WrapviewVariable {
     constructor(id) {
         this.id = id;
         this.guid = '';
@@ -12,7 +12,7 @@ class WrapviewVariable {
         this._template = null;
     }
 
-    getData(){
+    getData() {
         return {
             id: this.id,
             guid: this.guid,
@@ -31,12 +31,12 @@ class WrapviewVariable {
     }
 
     value() {
-        if(this._value === null) {
+        if (this._value === null) {
             return this.default_value;
         }
         return this._value;
     }
-    descriptor(){
+    descriptor() {
         return this._descriptor;
     }
 
@@ -55,11 +55,7 @@ class WrapviewVariable {
         this.allow_customization = d.allow_customization ?? false
     }
 
-    save(){
+    save() {
         //return Variable.setId(this.id).set(this.getData()).save(Object.keys(this.getData()));
     }
-}
-
-export {
-    WrapviewVariable
 }

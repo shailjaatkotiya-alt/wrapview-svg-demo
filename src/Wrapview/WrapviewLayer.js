@@ -1183,10 +1183,10 @@ class WrapviewSVGLayer extends WrapviewLayer {
     }
 }
 
-
 export {
+    WrapviewLayer,
+    WrapviewTextLayer,
     WrapviewImageLayer,
     WrapviewPatternLayer,
-    WrapviewTextLayer,
-    WrapviewSVGLayer,
+    WrapviewSVGLayer
 }

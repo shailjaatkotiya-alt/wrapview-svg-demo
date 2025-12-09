@@ -1,13 +1,11 @@
-import {DoubleSide, MeshBasicMaterial, MeshPhysicalMaterial, sRGBEncoding} from "three";
-import {WrapviewTexture} from "./WrapviewTexture.js";
+import { DoubleSide, MeshBasicMaterial, MeshPhysicalMaterial, NoColorSpace, sRGBEncoding, Vector2 } from "three";
+import { WrapviewTexture } from "./WrapviewTexture.js";
 import * as LayerTypes from "./WrapviewLayer.js";
-import {WrapviewFabric} from "./WrapviewFabric.js";
-import {WrapviewParameter} from "./WrapviewParameter.js";
-import {WrapviewSettings} from "./WrapviewSettings.js";
-import {WrapviewUtils} from "./WrapviewUtils.js";
-import {WrapviewImageLayer} from "./WrapviewLayer.js";
+import { WrapviewParameter } from "./WrapviewParameter.js";
+import { WrapviewSettings } from "./WrapviewSettings.js";
+import { WrapviewUtils } from "./WrapviewUtils.js";
 
-class WrapviewMaterial {
+export class WrapviewMaterial {
 
     constructor(instance, settings) {
         this.settings = {};
@@ -19,21 +17,21 @@ class WrapviewMaterial {
         _.merge(this.settings, this.defaults(), settings);
     }
 
-    defaults(){
+    defaults() {
         return {
             type: 'Basic',
-            access:{
+            access: {
                 listed: false,
                 selectable: false,
                 viewable: false
             }
         }
     }
-    init(){
+    init() {
         return this.build();
     }
 
-    instance(){
+    instance() {
         return this._instance;
     }
 
@@ -46,12 +44,12 @@ class WrapviewMaterial {
         this._variableSet = r;
     }
 
-    getVariableValue(id, param){
+    getVariableValue(id, param) {
         //TODO: If the variable set does not contain id, then detach the variable
         //Show Error in the Log Messages.
         return this._variableSet.get(id)?.value()
     }
-    getVariableDescriptor(id, param){
+    getVariableDescriptor(id, param) {
         //TODO: If the variable set does not contain id, then detach the variable
         //Show Error in the Log Messages.
         return this._variableSet.get(id)?.descriptor()
@@ -59,15 +57,15 @@ class WrapviewMaterial {
 
     getInheritedValue(p, id) {
         var panel = this._materialSet.get(p);
-        if(panel === null) {
+        if (panel === null) {
             return null;
         }
 
-        if(!panel.settings.hasOwnProperty(id)) {
+        if (!panel.settings.hasOwnProperty(id)) {
             return null;
         }
 
-        if(panel.settings[id] instanceof WrapviewParameter) {
+        if (panel.settings[id] instanceof WrapviewParameter) {
             return panel.settings[id].value();
         }
         return panel.settings[id];
@@ -75,25 +73,25 @@ class WrapviewMaterial {
 
     getInheritedDescriptor(p, id) {
         var panel = this._materialSet.get(p);
-        if(panel === null) {
+        if (panel === null) {
             return null;
         }
 
-        if(!panel.settings.hasOwnProperty(id)) {
+        if (!panel.settings.hasOwnProperty(id)) {
             return null;
         }
 
-        if(panel.settings[id] instanceof WrapviewParameter) {
+        if (panel.settings[id] instanceof WrapviewParameter) {
             return panel.settings[id].descriptor();
         }
         return panel.settings[id];
     }
 
-    is(a){
+    is(a) {
         return this.settings.access[a];
     }
 
-    setMaterial(m){
+    setMaterial(m) {
         this._material = m;
     }
 
@@ -101,18 +99,18 @@ class WrapviewMaterial {
         return this._material;
     }
 
-    build(){
-        return new Promise((resolve, reject)=>{
+    build() {
+        return new Promise((resolve, reject) => {
             resolve();
         })
     }
 }
 
-class WrapviewShadowMaterial extends WrapviewMaterial{
+export class WrapviewShadowMaterial extends WrapviewMaterial {
     defaults() {
         return {
             type: 'Basic',
-            access:{
+            access: {
                 listed: false,
                 selectable: false,
                 viewable: false
@@ -129,8 +127,8 @@ class WrapviewShadowMaterial extends WrapviewMaterial{
 
     build() {
 
-        return new Promise((resolve, reject)=> {
-            if(this.settings.resources.alpha === null) {
+        return new Promise((resolve, reject) => {
+            if (this.settings.resources.alpha === null) {
                 reject();
                 return;
             }
@@ -150,16 +148,16 @@ class WrapviewShadowMaterial extends WrapviewMaterial{
     }
 }
 
-class WrapviewStitchMaterial extends WrapviewMaterial{
+export class WrapviewStitchMaterial extends WrapviewMaterial {
     defaults() {
         return {
             type: 'Stitch',
-            access:{
+            access: {
                 listed: false,
                 selectable: false,
                 viewable: false
             },
-            color: new WrapviewParameter(this,WrapviewUtils.guid(),{
+            color: new WrapviewParameter(this, WrapviewUtils.guid(), {
                 type: 'fixed',
                 value: '#111111'
             }),
@@ -174,8 +172,8 @@ class WrapviewStitchMaterial extends WrapviewMaterial{
     }
 
     build() {
-        return new Promise((resolve, reject)=> {
-            if(this.settings.resources.diffuse === null) {
+        return new Promise((resolve, reject) => {
+            if (this.settings.resources.diffuse === null) {
                 reject();
                 return;
             }
@@ -194,22 +192,23 @@ class WrapviewStitchMaterial extends WrapviewMaterial{
             shadowSide: DoubleSide,
             //opacity: 0,
             //alphaMap: this.settings.alphaTexture,
+            alphaTest: true,
             side: DoubleSide,
-            transparent: true
+            transparent: false
         });
     }
 }
 
-class WrapviewPlainMaterial extends WrapviewMaterial{
+export class WrapviewPlainMaterial extends WrapviewMaterial {
     defaults() {
         return {
             type: 'Plain',
-            access:{
+            access: {
                 listed: false,
                 selectable: false,
                 viewable: false
             },
-            color: new WrapviewParameter(this,WrapviewUtils.guid(),{
+            color: new WrapviewParameter(this, WrapviewUtils.guid(), {
                 type: 'fixed',
                 value: '#111111'
             })
@@ -218,7 +217,7 @@ class WrapviewPlainMaterial extends WrapviewMaterial{
     }
 
     build() {
-        return new Promise((resolve, reject)=> {
+        return new Promise((resolve, reject) => {
             this.makeMaterial();
             resolve(this._material);
         });
@@ -235,7 +234,7 @@ class WrapviewPlainMaterial extends WrapviewMaterial{
 }
 
 
-class WrapviewTexturedMaterial extends WrapviewMaterial{
+export class WrapviewTexturedMaterial extends WrapviewMaterial {
     defaults() {
         return {
             type: 'Textured',
@@ -243,13 +242,13 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
                 base: false,
                 layers: false
             },
-            build:{
+            build: {
                 parameters: {
                     base: false,
                     layers: false,
                     size: 2048,
                     inner: 'inherit',
-                    color: new WrapviewParameter(this,WrapviewUtils.guid(),{
+                    color: new WrapviewParameter(this, WrapviewUtils.guid(), {
                         type: 'fixed',
                         descriptor: 'White',
                         value: '#FFFFFF'
@@ -261,6 +260,9 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
             },
             textures: {
                 diffuse: null,
+                roughness: null,
+                alpha: null,
+                metalness: null,
                 normal: null
             },
             buildable: {
@@ -269,39 +271,91 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
             resources: {
                 base: null,
                 diffuse: null,
-                normal: null
+                normal: null,
+                roughness: null,
+                metalness: null,
+                alpha: null,
             }
 
         }
     }
 
     build() {
-        return new Promise((resolve, reject)=> {
-            if(this.settings.resources.diffuse === null) {
+        return new Promise((resolve, reject) => {
+            if (this.settings.resources.diffuse === null) {
                 reject();
                 return;
             }
             this.settings.textures.diffuse = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.diffuse);
             this.settings.textures.diffuse.encoding = sRGBEncoding;
             this.settings.textures.diffuse.flipY = false;
-            this.settings.buildable.diffuse = new WrapviewTexture(this,{
+            this.settings.buildable.diffuse = new WrapviewTexture(this, {
                 size: {
                     width: this.settings.build.parameters.size,
                     height: this.settings.build.parameters.size,
                 }
             });
+
+            if (this.settings.resources.normal) {
+                this.settings.textures.normal = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.normal);
+                this.settings.textures.normal.encoding = NoColorSpace;
+                this.settings.textures.normal.flipY = false;
+                this.settings.buildable.normal = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.roughness) {
+                this.settings.textures.roughness = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.roughness);
+                this.settings.textures.roughness.encoding = sRGBEncoding;
+                this.settings.textures.roughness.flipY = false;
+                this.settings.buildable.roughness = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.alpha) {
+                this.settings.textures.alpha = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.alpha);
+                this.settings.textures.alpha.encoding = sRGBEncoding;
+                this.settings.textures.alpha.flipY = false;
+                this.settings.buildable.alpha = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.metalness) {
+                this.settings.textures.metalness = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.metalness);
+                this.settings.textures.metalness.encoding = sRGBEncoding;
+                this.settings.textures.metalness.flipY = false;
+                this.settings.buildable.metalness = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
             this.makeMaterial();
 
-            if(this.settings.build.parameters.base) {
-                this.buildBaseLayer().then(()=>{
+            if (this.settings.build.parameters.base) {
+                this.buildBaseLayer().then(() => {
 
-                    if(this.settings.build.parameters.layers) {
+                    if (this.settings.build.parameters.layers) {
                         var promises = [];
-                        this.settings.build.parameters.layers.forEach((l)=>{
+                        this.settings.build.parameters.layers.forEach((l) => {
                             promises.push(this.buildLayer(l));
                         });
-                        Promise.all(promises).then(()=>{
-                            this.texture()?.beginEditing().then(()=>{
+                        Promise.all(promises).then(() => {
+                            this.texture()?.beginEditing().then(() => {
                                 this.texture()?.render();
                                 this.texture()?.endEditing();
                                 resolve(this._material);
@@ -319,9 +373,9 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
         });
     }
 
-    buildBaseLayer(){
-        return new Promise((resolve, reject)=>{
-            const imageLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(),{
+    buildBaseLayer() {
+        return new Promise((resolve, reject) => {
+            const imageLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(), {
                 pivot: {
                     x: 0,
                     y: 0
@@ -339,7 +393,7 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
 
             imageLayer.load({
                 path: this.settings.resources.base
-            }).then(()=>{
+            }).then(() => {
                 this.settings.status.base = true;
                 resolve(this._material);
             });
@@ -347,22 +401,22 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
     }
 
     buildLayer(l) {
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
             var uid = WrapviewUtils.guid();
-            var layer = new LayerTypes[l.type](uid,{});
+            var layer = new LayerTypes[l.type](uid, {});
             layer.applySettings(l.settings, this);
             this.settings.buildable.diffuse.addLayer(layer);
-            layer.load(l.data, this).then(()=>{
+            layer.load(l.data, this).then(() => {
                 resolve();
-            },()=>{
+            }, () => {
                 resolve();
             });
         });
     }
 
-    setCapturedTexture(texture, imageData){
+    setCapturedTexture(texture, imageData) {
         this.settings.raw.diffuse = imageData;
-        if(this.settings.textures.diffuse !== null) {
+        if (this.settings.textures.diffuse !== null) {
             this.settings.textures.diffuse.dispose();
         }
         this.settings.textures.diffuse = texture;
@@ -374,17 +428,17 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
         return this.settings.buildable.diffuse;
     }
 
-    beginEditing(){
-        return new Promise((resolve)=>{
-            if(!this.settings.status.base) {
-                this.buildBaseLayer().then(()=>{
+    beginEditing() {
+        return new Promise((resolve) => {
+            if (!this.settings.status.base) {
+                this.buildBaseLayer().then(() => {
 
-                    if(this.settings.build.parameters.layers) {
+                    if (this.settings.build.parameters.layers) {
                         var promises = [];
-                        this.settings.build.parameters.layers.forEach((l)=>{
+                        this.settings.build.parameters.layers.forEach((l) => {
                             promises.push(this.buildLayer(l));
                         });
-                        Promise.all(promises).then(()=>{
+                        Promise.all(promises).then(() => {
                             this._material.map = this.settings.buildable.diffuse.texture();
                             resolve();
                         })
@@ -402,8 +456,8 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
 
     }
 
-    endEditing(){
-        return new Promise((resolve)=> {
+    endEditing() {
+        return new Promise((resolve) => {
             this._material.map = this.settings.textures.diffuse;
             resolve();
         });
@@ -412,25 +466,31 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
     makeMaterial() {
         this._material = new MeshPhysicalMaterial({
             map: this.settings.textures.diffuse,
+            normalMap: this.settings.textures.normal,
+            roughnessMap: this.settings.textures.roughness,
+            alphaMap: this.settings.textures.alpha,
+            metalnessMap: this.settings.textures.metalness,
             reflectivity: 0.0,
-            roughness: 0.4,
+            roughness: 1,
+            metalness: 1,
             shadowSide: DoubleSide,
-            side: DoubleSide
+            side: DoubleSide,
+            transparent: !!this.settings.textures.alpha,
         });
     }
 
-    uploadRawData(s){
-        return new Promise((resolve, reject)=>{
+    uploadRawData(s) {
+        return new Promise((resolve, reject) => {
             var settings = _.merge({
                 url: '/api/panels/save/texture',
                 path: 'captures/'
-            },s);
-            if(this.settings.raw.diffuse === null) {
+            }, s);
+            if (this.settings.raw.diffuse === null) {
                 resolve();
             } else {
                 var url = settings.url;
                 axios(url, {
-                    method:'post',
+                    method: 'post',
                     data: {
                         asset: this.settings.raw.diffuse,
                         path: settings.path,
@@ -441,20 +501,20 @@ class WrapviewTexturedMaterial extends WrapviewMaterial{
                     },
                     responseType: 'json',
                 })
-                .then((response) => {
-                    this.settings.raw.diffuse = null
-                    this.settings.resources.diffuse = response.data.url;
-                    resolve();
-                })
-                .catch((error) => {
-                    reject(error);
-                });
+                    .then((response) => {
+                        this.settings.raw.diffuse = null
+                        this.settings.resources.diffuse = response.data.url;
+                        resolve();
+                    })
+                    .catch((error) => {
+                        reject(error);
+                    });
             }
         })
     }
 }
 
-class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
+export class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial {
     defaults() {
         return {
             type: 'Textured',
@@ -465,18 +525,18 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
                 reversed: false,
                 editing: false
             },
-            build:{
+            build: {
                 parameters: {
                     base: false,
                     layers: false,
                     size: 2048,
                     inner: 'inherit',
-                    color: new WrapviewParameter(this,WrapviewUtils.guid(),{
+                    color: new WrapviewParameter(this, WrapviewUtils.guid(), {
                         type: 'fixed',
                         descriptor: 'White',
                         value: '#FFFFFF'
                     }),
-                    reverse_color: new WrapviewParameter(this,WrapviewUtils.guid(),{
+                    reverse_color: new WrapviewParameter(this, WrapviewUtils.guid(), {
                         type: 'fixed',
                         descriptor: 'White',
                         value: '#FFFFFF'
@@ -486,9 +546,12 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
             textures: {
                 diffuse: null,
                 normal: null,
+                roughness: null,
+                metalness: null,
+                alpha: null,
                 reverse: null
             },
-            raw:{
+            raw: {
                 diffuse: null,
                 reverse: null
             },
@@ -500,27 +563,30 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
                 base: null,
                 diffuse: null,
                 normal: null,
-                reverse: null
+                reverse: null,
+                roughness: null,
+                metalness: null,
+                alpha: null,
             }
 
         }
     }
 
     build() {
-        return new Promise((resolve, reject)=> {
-            if(this.settings.resources.diffuse === null) {
+        return new Promise((resolve, reject) => {
+            if (this.settings.resources.diffuse === null) {
                 reject();
                 return;
             }
 
-            if(this.settings.resources.reverse === null) {
+            if (this.settings.resources.reverse === null) {
                 reject();
                 return;
             }
             this.settings.textures.diffuse = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.diffuse);
             this.settings.textures.diffuse.encoding = sRGBEncoding;
             this.settings.textures.diffuse.flipY = false;
-            this.settings.buildable.diffuse = new WrapviewTexture(this,{
+            this.settings.buildable.diffuse = new WrapviewTexture(this, {
                 size: {
                     width: this.settings.build.parameters.size,
                     height: this.settings.build.parameters.size,
@@ -530,44 +596,93 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
             this.settings.textures.reverse = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.reverse);
             this.settings.textures.reverse.encoding = sRGBEncoding;
             this.settings.textures.reverse.flipY = false;
-            this.settings.buildable.reverse = new WrapviewTexture(this,{
+            this.settings.buildable.reverse = new WrapviewTexture(this, {
                 size: {
                     width: this.settings.build.parameters.size,
                     height: this.settings.build.parameters.size,
                 }
             });
 
+            if (this.settings.resources.normal) {
+                this.settings.textures.normal = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.normal);
+                this.settings.textures.normal.encoding = sRGBEncoding;
+                this.settings.textures.normal.flipY = false;
+                this.settings.buildable.normal = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.roughness) {
+                this.settings.textures.roughness = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.roughness);
+                this.settings.textures.roughness.encoding = sRGBEncoding;
+                this.settings.textures.roughness.flipY = false;
+                this.settings.buildable.roughness = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.alpha) {
+                this.settings.textures.alpha = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.alpha);
+                this.settings.textures.alpha.encoding = sRGBEncoding;
+                this.settings.textures.alpha.flipY = false;
+                this.settings.buildable.alpha = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
+            if (this.settings.resources.metalness) {
+                this.settings.textures.metalness = WrapviewSettings.agent.loaders.texture.load(this.settings.resources.metalness);
+                this.settings.textures.metalness.encoding = sRGBEncoding;
+                this.settings.textures.metalness.flipY = false;
+                this.settings.buildable.metalness = new WrapviewTexture(this, {
+                    size: {
+                        width: this.settings.build.parameters.size,
+                        height: this.settings.build.parameters.size,
+                    }
+                });
+            }
+
             this.makeMaterial();
 
-            if(this.settings.build.parameters.base) {
-                this.buildBaseLayer().then(()=>{
+            if (this.settings.build.parameters.base) {
+                this.buildBaseLayer().then(() => {
                     var promises = [];
-                    if(this.settings.build.parameters.layers) {
+                    if (this.settings.build.parameters.layers) {
 
-                        this.settings.build.parameters.layers.forEach((l)=>{
-                            promises.push(this.buildLayer(l,'diffuse'));
+                        this.settings.build.parameters.layers.forEach((l) => {
+                            promises.push(this.buildLayer(l, 'diffuse'));
                         });
 
                     }
-                    if(this.settings.build.parameters.reverse_layers) {
+                    if (this.settings.build.parameters.reverse_layers) {
                         this.settings.build.parameters.reverse_layers.forEach((l) => {
-                            promises.push(this.buildLayer(l,'reverse'));
+                            promises.push(this.buildLayer(l, 'reverse'));
                         });
                     }
 
 
-                    if(promises.length === 0) {
+                    if (promises.length === 0) {
                         resolve(this._material);
                         return;
                     }
 
-                    Promise.all(promises).then(()=>{
-                        this.texture()?.beginEditing().then(()=>{
+                    Promise.all(promises).then(() => {
+                        this.texture()?.beginEditing().then(() => {
                             this.texture()?.render();
-                            this.toggle().then(()=>{
+                            this.toggle().then(() => {
                                 this.texture()?.render();
                                 this.texture()?.endEditing();
-                                resolve(this._material);                            })
+                                resolve(this._material);
+                            })
                         });
                     });
                 });
@@ -577,9 +692,9 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
         });
     }
 
-    buildBaseLayer(){
-        return new Promise((resolve, reject)=>{
-            const imageLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(),{
+    buildBaseLayer() {
+        return new Promise((resolve, reject) => {
+            const imageLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(), {
                 pivot: {
                     x: 0,
                     y: 0
@@ -595,7 +710,7 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
             imageLayer.setColorParameter(this.settings.build.parameters.color);
             imageLayer.lock();
 
-            const reverseLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(),{
+            const reverseLayer = new LayerTypes.WrapviewImageLayer(WrapviewUtils.guid(), {
                 pivot: {
                     x: 0,
                     y: 0
@@ -613,10 +728,10 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
 
             imageLayer.load({
                 path: this.settings.resources.base
-            }).then(()=>{
+            }).then(() => {
                 reverseLayer.load({
                     path: this.settings.resources.base
-                }).then(()=>{
+                }).then(() => {
                     this.settings.status.base = true;
                     resolve(this._material);
                 });
@@ -625,23 +740,23 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
     }
 
     buildLayer(l, t) {
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
             var uid = WrapviewUtils.guid();
-            var layer = new LayerTypes[l.type](uid,{});
+            var layer = new LayerTypes[l.type](uid, {});
             layer.applySettings(l.settings, this);
             this.settings.buildable[t].addLayer(layer);
-            layer.load(l.data, this).then(()=>{
+            layer.load(l.data, this).then(() => {
                 resolve();
-            },()=>{
+            }, () => {
                 resolve();
             });
         });
     }
 
-    setCapturedTexture(texture, imageData){
-        if(this.settings.status.reversed) {
+    setCapturedTexture(texture, imageData) {
+        if (this.settings.status.reversed) {
             this.settings.raw.reverse = imageData;
-            if(this.settings.textures.reverse !== null) {
+            if (this.settings.textures.reverse !== null) {
                 this.settings.textures.reverse.dispose();
             }
             this.settings.textures.reverse = texture;
@@ -649,7 +764,7 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
             this.settings.textures.reverse.flipY = false;
         } else {
             this.settings.raw.diffuse = imageData;
-            if(this.settings.textures.diffuse !== null) {
+            if (this.settings.textures.diffuse !== null) {
                 this.settings.textures.diffuse.dispose();
             }
             this.settings.textures.diffuse = texture;
@@ -660,25 +775,25 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
     }
 
     texture() {
-        if(this.settings.status.reversed) {
+        if (this.settings.status.reversed) {
             return this.settings.buildable.reverse;
         } else {
             return this.settings.buildable.diffuse;
         }
     }
 
-    toggle(){
-        return new Promise((resolve, reject)=>{
-            if(this.settings.status.editing) {
-                this.texture().endEditing().then(()=>{
+    toggle() {
+        return new Promise((resolve, reject) => {
+            if (this.settings.status.editing) {
+                this.texture().endEditing().then(() => {
                     this.settings.status.reversed = !this.settings.status.reversed;
-                    this.texture().beginEditing().then(()=>{
+                    this.texture().beginEditing().then(() => {
                         resolve();
                     });
                 });
             } else {
                 this.settings.status.reversed = !this.settings.status.reversed;
-                if(this.settings.status.reversed) {
+                if (this.settings.status.reversed) {
                     this._material.map = this.settings.textures.reverse;
                 } else {
                     this._material.map = this.settings.textures.diffuse;
@@ -689,19 +804,19 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
     }
 
 
-    beginEditing(){
-        return new Promise((resolve)=>{
-            if(!this.settings.status.base) {
-                this.buildBaseLayer().then(()=>{
+    beginEditing() {
+        return new Promise((resolve) => {
+            if (!this.settings.status.base) {
+                this.buildBaseLayer().then(() => {
 
-                    if(this.settings.status.reversed) {
-                        if(!this.settings.status.reverse_layers) {
-                            if(this.settings.build.parameters.reverse_layers) {
+                    if (this.settings.status.reversed) {
+                        if (!this.settings.status.reverse_layers) {
+                            if (this.settings.build.parameters.reverse_layers) {
                                 var promises = [];
-                                this.settings.build.parameters.reverse_layers.forEach((l)=>{
-                                    promises.push(this.buildLayer(l,'reverse'));
+                                this.settings.build.parameters.reverse_layers.forEach((l) => {
+                                    promises.push(this.buildLayer(l, 'reverse'));
                                 });
-                                Promise.all(promises).then(()=>{
+                                Promise.all(promises).then(() => {
                                     this._material.map = this.settings.buildable.reverse.texture();
                                     this.settings.status.reverse_layers = true;
                                     this.settings.status.editing = true;
@@ -720,7 +835,7 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
                             resolve();
                         }
                     } else {
-                        if(!this.settings.status.layers) {
+                        if (!this.settings.status.layers) {
                             if (this.settings.build.parameters.layers) {
                                 var promises = [];
                                 this.settings.build.parameters.layers.forEach((l) => {
@@ -747,14 +862,14 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
                     }
                 })
             } else {
-                if(this.settings.status.reversed) {
-                    if(!this.settings.status.reverse_layers) {
-                        if(this.settings.build.parameters.reverse_layers) {
+                if (this.settings.status.reversed) {
+                    if (!this.settings.status.reverse_layers) {
+                        if (this.settings.build.parameters.reverse_layers) {
                             var promises = [];
-                            this.settings.build.parameters.reverse_layers.forEach((l)=>{
-                                promises.push(this.buildLayer(l,'reverse'));
+                            this.settings.build.parameters.reverse_layers.forEach((l) => {
+                                promises.push(this.buildLayer(l, 'reverse'));
                             });
-                            Promise.all(promises).then(()=>{
+                            Promise.all(promises).then(() => {
                                 this._material.map = this.settings.buildable.reverse.texture();
                                 this.settings.status.reverse_layers = true;
                                 this.settings.status.editing = true;
@@ -773,7 +888,7 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
                         resolve();
                     }
                 } else {
-                    if(!this.settings.status.layers) {
+                    if (!this.settings.status.layers) {
                         if (this.settings.build.parameters.layers) {
                             var promises = [];
                             this.settings.build.parameters.layers.forEach((l) => {
@@ -804,9 +919,9 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
 
     }
 
-    endEditing(){
-        return new Promise((resolve)=> {
-            if(this.settings.status.reversed) {
+    endEditing() {
+        return new Promise((resolve) => {
+            if (this.settings.status.reversed) {
                 this._material.map = this.settings.textures.reverse;
             } else {
                 this._material.map = this.settings.textures.diffuse;
@@ -819,25 +934,31 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
     makeMaterial() {
         this._material = new MeshPhysicalMaterial({
             map: this.settings.textures.diffuse,
+            normalMap: this.settings.textures.normal,
+            roughnessMap: this.settings.textures.roughness,
+            alphaMap: this.settings.textures.alpha,
+            metalnessMap: this.settings.textures.metalness,
             reflectivity: 0.0,
-            roughness: 0.4,
+            roughness: 1,
+            metalness: 1,
             shadowSide: DoubleSide,
-            side: DoubleSide
+            side: DoubleSide,
+            transparent: !!this.settings.textures.alpha,
         });
     }
 
-    uploadDiffuse(s){
-        return new Promise((resolve, reject)=>{
+    uploadDiffuse(s) {
+        return new Promise((resolve, reject) => {
             var settings = _.merge({
                 url: '/api/panels/save/texture',
                 path: 'captures/'
-            },s);
-            if(this.settings.raw.diffuse === null) {
+            }, s);
+            if (this.settings.raw.diffuse === null) {
                 resolve();
             } else {
                 var url = settings.url;
                 axios(url, {
-                    method:'post',
+                    method: 'post',
                     data: {
                         asset: this.settings.raw.diffuse,
                         path: settings.path,
@@ -860,18 +981,18 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
         })
     }
 
-    uploadReverse(s){
-        return new Promise((resolve, reject)=>{
+    uploadReverse(s) {
+        return new Promise((resolve, reject) => {
             var settings = _.merge({
                 url: '/api/panels/save/texture',
                 path: 'captures/'
-            },s);
-            if(this.settings.raw.reverse === null) {
+            }, s);
+            if (this.settings.raw.reverse === null) {
                 resolve();
             } else {
                 var url = settings.url;
                 axios(url, {
-                    method:'post',
+                    method: 'post',
                     data: {
                         asset: this.settings.raw.reverse,
                         path: settings.path,
@@ -894,27 +1015,17 @@ class WrapviewReversibleTexturedMaterial extends WrapviewTexturedMaterial{
         })
     }
 
-    uploadRawData(s){
-        return new Promise((resolve, reject)=>{
-            this.uploadDiffuse(s).then(()=> {
-                this.uploadReverse(s).then(()=>{
+    uploadRawData(s) {
+        return new Promise((resolve, reject) => {
+            this.uploadDiffuse(s).then(() => {
+                this.uploadReverse(s).then(() => {
                     resolve();
-                },(error)=>{
+                }, (error) => {
                     reject(error);
                 })
-            },(error)=>{
+            }, (error) => {
                 reject(error);
             })
         })
     }
-}
-
-
-export {
-    WrapviewMaterial,
-    WrapviewShadowMaterial,
-    WrapviewStitchMaterial,
-    WrapviewPlainMaterial,
-    WrapviewTexturedMaterial,
-    WrapviewReversibleTexturedMaterial
 }

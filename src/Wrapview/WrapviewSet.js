@@ -74,10 +74,9 @@ class WrapviewSet {
         });
         return rows;
     }
-
 }
 
-class WrapviewMaterialSet extends WrapviewSet {
+export class WrapviewMaterialSet extends WrapviewSet {
     constructor(t) {
         super(t);
     }
@@ -93,7 +92,8 @@ class WrapviewMaterialSet extends WrapviewSet {
         });
     }
 }
-class WrapviewVariableSet extends WrapviewSet {
+
+export class WrapviewVariableSet extends WrapviewSet {
     constructor(t) {
         super(t);
     }
@@ -118,7 +118,7 @@ class WrapviewVariableSet extends WrapviewSet {
     }
 }
 
-class WrapviewFontSet extends WrapviewSet {
+export class WrapviewFontSet extends WrapviewSet {
     constructor(t) {
         super(t);
     }
@@ -135,10 +135,4 @@ class WrapviewFontSet extends WrapviewSet {
         }
     }
 
-}
-
-export {
-    WrapviewMaterialSet,
-    WrapviewVariableSet,
-    WrapviewFontSet
 }

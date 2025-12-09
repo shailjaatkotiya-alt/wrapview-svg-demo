@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 class WrapviewSVGEditor {
     constructor(instance) {
         this._instance = instance;

@@ -1,9 +1,7 @@
-import {WrapviewMaterial} from "./WrapviewMaterial.js";
-
-class WrapviewParameter {
+export class WrapviewParameter {
     constructor(material, id, v) {
         this._material = material;
-        if(this._material) {
+        if (this._material) {
             this._material.parameters.push(this);
         }
         this.id = id;
@@ -11,7 +9,7 @@ class WrapviewParameter {
         this._value = null;
         this._key = null;
         this._descriptor = null;
-        if(typeof v !== "undefined") {
+        if (typeof v !== "undefined") {
             this.set(v);
         }
 
@@ -22,10 +20,10 @@ class WrapviewParameter {
             type: this._type,
             value: this._value
         };
-        if(this._key !== null) {
+        if (this._key !== null) {
             d.key = this._key;
         }
-        if(this._descriptor !== null) {
+        if (this._descriptor !== null) {
             d.descriptor = this._descriptor;
         }
         return d;
@@ -33,8 +31,8 @@ class WrapviewParameter {
 
     set(v) {
         this._type = v.type;
-        this._key = v.hasOwnProperty('key')?v.key : null;
-        this._descriptor = v.hasOwnProperty('descriptor')?v.descriptor : null;
+        this._key = v.hasOwnProperty('key') ? v.key : null;
+        this._descriptor = v.hasOwnProperty('descriptor') ? v.descriptor : null;
         this._value = v.value;
     }
 
@@ -52,10 +50,10 @@ class WrapviewParameter {
     }
 
     isAttachedTo(id) {
-        if(this._type !== 'variable') {
+        if (this._type !== 'variable') {
             return false;
         }
-        if(this._key === id) {
+        if (this._key === id) {
             return true;
         }
         return false;
@@ -71,8 +69,8 @@ class WrapviewParameter {
         this._key = null;
     }
 
-    value(){
-        if(this._type === 'variable') {
+    value() {
+        if (this._type === 'variable') {
             this._value = this._material.getVariableValue(this._key, this);
         } else if (this._type === 'inherited') {
             this._value = this._material.getInheritedValue(this._key, this.id);
@@ -80,17 +78,12 @@ class WrapviewParameter {
         return this._value;
     }
 
-    descriptor(){
-        if(this._type === 'variable') {
+    descriptor() {
+        if (this._type === 'variable') {
             this._descriptor = this._material.getVariableDescriptor(this._key, this);
         } else if (this._type === 'inherited') {
             this._descriptor = this._material.getInheritedDescriptor(this._key, this.id);
         }
         return this._descriptor;
     }
-}
-
-
-export {
-    WrapviewParameter
 }

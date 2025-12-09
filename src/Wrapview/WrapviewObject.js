@@ -1,7 +1,8 @@
-import {WrapviewUtils} from "./WrapviewUtils.js";
-import {WrapviewSettings} from "./WrapviewSettings.js";
-import {Mesh} from 'three';
-class WrapviewObject {
+import { WrapviewUtils } from "./WrapviewUtils.js";
+import { WrapviewSettings } from "./WrapviewSettings.js";
+import { Mesh } from 'three';
+
+export class WrapviewObject {
     constructor(settings) {
         this.id = WrapviewUtils.guid();
         this._instance = null;
@@ -48,23 +49,25 @@ class WrapviewObject {
 
     }
 
-    load(path){
-        return new Promise((resolve, reject)=>{
-            WrapviewSettings.agent.loaders.object.load(path,(o)=>{
+    load(path) {
+        return new Promise((resolve, reject) => {
+            WrapviewSettings.agent.loaders.object.load(path, (o) => {
                 var object = o.scene;
-                object.position.set(this.settings.transform.position.x,this.settings.transform.position.y,this.settings.transform.position.z);
-                object.rotation.set(this.settings.transform.rotation.x,this.settings.transform.rotation.y,this.settings.transform.rotation.z);
-                object.scale.set(this.settings.transform.scale.x,this.settings.transform.scale.y,this.settings.transform.scale.z);
-                object.traverse((child)=> {
-                    if(child instanceof Mesh) {
+                object.position.set(this.settings.transform.position.x, this.settings.transform.position.y, this.settings.transform.position.z);
+                object.rotation.set(this.settings.transform.rotation.x, this.settings.transform.rotation.y, this.settings.transform.rotation.z);
+                object.scale.set(this.settings.transform.scale.x, this.settings.transform.scale.y, this.settings.transform.scale.z);
+                object.traverse((child) => {
+                    if (child instanceof Mesh) {
                         this.children[child.name] = child;
-                        if(this._materials !== null) {
-                            if(child.name.startsWith('EXT_ZIPPER_PANEL')) {
+                        if (this._materials !== null) {
+                            if (child.name.startsWith('EXT_ZIPPER_PANEL')) {
                                 child.material = this._materials.get('ZIPPER_PANEL')._material;
-                            } else if(this._materials.has(child.name)) {
+                            } else if (this._materials.has(child.name)) {
                                 child.material = this._materials.get(child.name)._material;
                             }
                         }
+
+
                     }
                 });
                 this._object = object;
@@ -73,16 +76,12 @@ class WrapviewObject {
         });
     }
 
-    object(){
+    object() {
         return this._object;
     }
 
-    remove(){
+    remove() {
         this._instance?.removeObject(this);
         this._object = null;
     }
-}
-
-export {
-    WrapviewObject
 }

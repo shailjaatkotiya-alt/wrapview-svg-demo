@@ -1,25 +1,26 @@
 import * as VectorShapes from "./WrapviewVector";
-class WrapviewVectorPanel extends VectorShapes.WrapviewVectorObject {
+
+export class WrapviewVectorPanel extends VectorShapes.WrapviewVectorObject {
     constructor(settings) {
         super(settings);
     }
 
-    _createWrapper(){
-        if(this._wrapper !== null) {
+    _createWrapper() {
+        if (this._wrapper !== null) {
             this._wrapper.remove();
         }
-        this._wrapper = document.createElementNS('http://www.w3.org/2000/svg','svg');
-        this._wrapper.setAttribute('id',this._id+'_wrapper');
+        this._wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        this._wrapper.setAttribute('id', this._id + '_wrapper');
     }
 
-    init(){
+    init() {
         this._createWrapper();
         this._props = _.cloneDeep(this.settings.data.size.value('pivot').properties);
         this.settings.size = this._props.outline.size;
         this.outline = new VectorShapes[this._props.outline.type](this._props.outline);
         this.inline = new VectorShapes[this._props.inline.type](this._props.inline);
         this.anchor = new VectorShapes.WrapviewVectorCircle({
-            data:{
+            data: {
                 radius: 10,
             },
             size: {
@@ -34,7 +35,7 @@ class WrapviewVectorPanel extends VectorShapes.WrapviewVectorObject {
         this.inline.setFill('#FFFFFF');
         this.inline.setStroke('#FF0000');
 
-        this._wrapper.setAttribute('viewBox','0 0 '+this.settings.size.width+' '+this.settings.size.height);
+        this._wrapper.setAttribute('viewBox', '0 0 ' + this.settings.size.width + ' ' + this.settings.size.height);
         this._wrapper.style.overflow = 'visible';
 
         this.outline.draw(this._wrapper);
@@ -50,7 +51,7 @@ class WrapviewVectorPanel extends VectorShapes.WrapviewVectorObject {
 }
 
 
-class WrapviewVectorPrintFile {
+export class WrapviewVectorPrintFile {
     constructor(settings) {
         this.id = guid();
         this.settings = {};
@@ -60,7 +61,7 @@ class WrapviewVectorPrintFile {
         this.init();
     }
 
-    defaults(){
+    defaults() {
         return {
             mode: 'single',
             canvas: {
@@ -76,7 +77,7 @@ class WrapviewVectorPrintFile {
         }
     }
 
-    makeDownloadLink(linkId){
+    makeDownloadLink(linkId) {
         // Get svg source
         var serializer = new XMLSerializer()
         var source = serializer.serializeToString(this._wrapper)
@@ -100,14 +101,14 @@ class WrapviewVectorPrintFile {
     }
 
     _createWrapper() {
-        if(this._wrapper !== null) {
+        if (this._wrapper !== null) {
             this._wrapper.remove();
         }
-        this._wrapper = document.createElementNS('http://www.w3.org/2000/svg','svg');
-        this._wrapper.setAttribute('id','svg_'+'_'+this.id);
+        this._wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        this._wrapper.setAttribute('id', 'svg_' + '_' + this.id);
 
-        this._wrapper.setAttribute('width',this.settings.canvas.size.width);
-        this._wrapper.setAttribute('height',this.settings.canvas.size.height);
+        this._wrapper.setAttribute('width', this.settings.canvas.size.width);
+        this._wrapper.setAttribute('height', this.settings.canvas.size.height);
 
     }
 
@@ -122,37 +123,37 @@ class WrapviewVectorPrintFile {
 
     setCanvasSize(s) {
         this.settings.canvas.size = s;
-        this._wrapper.setAttribute('width',this.settings.canvas.size.width);
-        this._wrapper.setAttribute('height',this.settings.canvas.size.height);
+        this._wrapper.setAttribute('width', this.settings.canvas.size.width);
+        this._wrapper.setAttribute('height', this.settings.canvas.size.height);
     }
 
-    setMaterials(m){
+    setMaterials(m) {
         this.materials = m;
     }
 
-    init(){
+    init() {
         this._createWrapper();
     }
 
     drawAll(size_shortcode) {
-        this._wrapper.setAttribute('viewBox','0 0 '+this.settings.size.width+' '+this.settings.size.height);
+        this._wrapper.setAttribute('viewBox', '0 0 ' + this.settings.size.width + ' ' + this.settings.size.height);
 
         var panels = Object.keys(this.materials.all());
-        panels.forEach((p)=>{
+        panels.forEach((p) => {
             this.draw(p, size_shortcode);
         });
     }
 
-    draw(p, size_shortcode){
+    draw(p, size_shortcode) {
         var panel = this.materials.get(p);
-        var sizes = panel.panel()?.child('sizes')?.fetch('shortcode',size_shortcode);
-        if(!sizes || sizes.length <= 0) {
+        var sizes = panel.panel()?.child('sizes')?.fetch('shortcode', size_shortcode);
+        if (!sizes || sizes.length <= 0) {
             return;
         }
         var size = sizes[0];
         var props = size.value('pivot').properties;
         var vectorPanel;
-        if(this.settings.mode === 'single') {
+        if (this.settings.mode === 'single') {
             vectorPanel = new WrapviewVectorPanel({
                 pivot: {
                     x: 0,
@@ -167,7 +168,7 @@ class WrapviewVectorPrintFile {
                     size: size
                 }
             });
-            this._wrapper.setAttribute('viewBox','0 0 '+this.settings.size.width+' '+this.settings.size.height);
+            this._wrapper.setAttribute('viewBox', '0 0 ' + this.settings.size.width + ' ' + this.settings.size.height);
 
         } else {
             vectorPanel = new WrapviewVectorPanel({
@@ -195,8 +196,4 @@ class WrapviewVectorPrintFile {
     setBaseColor(c) {
         this.inline.setFill(c);
     }
-}
-
-export {
-    WrapviewVectorPrintFile
 }

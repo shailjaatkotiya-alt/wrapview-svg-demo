@@ -9,10 +9,11 @@ import {
     Color,
     ShaderChunk
 } from 'three';
-import {WrapviewSettings} from "./WrapviewSettings.js";
-import {WrapviewEditor} from "./WrapviewEditor.js";
-import {WrapviewSVGEditor} from "./WrapviewSvgEditor.js";
-class WrapviewInstance {
+import { WrapviewSettings } from "./WrapviewSettings.js";
+import { WrapviewEditor } from "./WrapviewEditor.js";
+import { WrapviewSVGEditor } from "./WrapviewSvgEditor.js";
+
+export class WrapviewInstance {
     constructor(id, settings) {
         this.id = id;
         this.settings = {};
@@ -29,28 +30,28 @@ class WrapviewInstance {
         this._frameRef = null;
         this._viewer = null;
         this._offsets = null;
-        this.animate = ()=>{
-            this._frameRef = requestAnimationFrame( this.animate );
-            if(this._viewer !== null) {
+        this.animate = () => {
+            this._frameRef = requestAnimationFrame(this.animate);
+            if (this._viewer !== null) {
                 this._renderer.setSize(this._viewer.clientWidth, this._viewer.clientHeight);
-                this._camera.aspect = (this._viewer.clientWidth/this._viewer.clientHeight);
+                this._camera.aspect = (this._viewer.clientWidth / this._viewer.clientHeight);
                 this._camera.updateProjectionMatrix();
             }
-            if(this._controller !== null) {
+            if (this._controller !== null) {
                 this._controller.update();
             }
             var deltaTime = this._clock.getDelta();
-            Object.keys(this._objects).forEach((i)=>{
+            Object.keys(this._objects).forEach((i) => {
                 const o = this._objects[i];
                 o.update(deltaTime);
             });
-            Object.keys(this._lights).forEach((i)=>{
+            Object.keys(this._lights).forEach((i) => {
                 const o = this._lights[i];
                 o.update();
 
             });
 
-            this._renderer.render( this._scene, this._camera );
+            this._renderer.render(this._scene, this._camera);
         }
         this.init();
     };
@@ -94,11 +95,11 @@ class WrapviewInstance {
     aspectRatio() {
         return this.settings.agent.width / this.settings.agent.height;
     }
-    offsets(){
+    offsets() {
         return this._offsets;
     }
 
-    editor(){
+    editor() {
         return this._editor;
     }
 
@@ -110,24 +111,24 @@ class WrapviewInstance {
         return this._canvas;
     }
 
-    refreshCanvas(){
+    refreshCanvas() {
         this._canvas.style.width = '1px';
         this._canvas.style.height = '1px';
         this.editor().refresh();
-        this._canvas.style.width = this._container.clientWidth+'px';
-        this._canvas.style.height = this._container.clientHeight+'px';
+        this._canvas.style.width = this._container.clientWidth + 'px';
+        this._canvas.style.height = this._container.clientHeight + 'px';
         this.updateOffsets();
     }
 
-    texture(){
+    texture() {
         return this._texture;
     }
 
-    beginEditingTexture(texture){
+    beginEditingTexture(texture) {
         this._texture = texture;
     }
 
-    endEditingTexture(){
+    endEditingTexture() {
         this._texture = null;
     }
 
@@ -156,7 +157,7 @@ class WrapviewInstance {
     setMaterials(m) {
         this._materials = m;
     }
-    init(){
+    init() {
         this._canvas = document.createElement('canvas');
         this._canvas.width = 1;
         this._canvas.height = 1;
@@ -164,18 +165,18 @@ class WrapviewInstance {
         this._svgEditor = new WrapviewSVGEditor(this);
 
         this._scene = new Scene();
-        if(this.settings.renderer.hasOwnProperty('background')) {
+        if (this.settings.renderer.hasOwnProperty('background')) {
             this._scene.background = new Color(this.settings.renderer.background);
         }
-        this._renderer = new WebGLRenderer( this.settings.renderer );
-        this._renderer.setPixelRatio( WrapviewSettings.agent.pixelRatio );
-        this._renderer.setSize( this.settings.agent.width, this.settings.agent.height );
+        this._renderer = new WebGLRenderer(this.settings.renderer);
+        this._renderer.setPixelRatio(WrapviewSettings.agent.pixelRatio);
+        this._renderer.setSize(this.settings.agent.width, this.settings.agent.height);
         this._renderer.outputEncoding = sRGBEncoding;
         this._renderer.shadowMap.enabled = true;
         this._renderer.shadowMap.soft = true;
         this._renderer.shadowMap.type = PCFSoftShadowMap;
-        this._camera = new PerspectiveCamera( this.settings.camera.fov, this.aspectRatio(), this.settings.camera.near, this.settings.camera.far );
-        this._camera.position.set( this.settings.camera.position.x,
+        this._camera = new PerspectiveCamera(this.settings.camera.fov, this.aspectRatio(), this.settings.camera.near, this.settings.camera.far);
+        this._camera.position.set(this.settings.camera.position.x,
             this.settings.camera.position.y,
             this.settings.camera.position.z);
 
@@ -183,19 +184,19 @@ class WrapviewInstance {
 
     draw(container) {
         this._viewer = container;
-        container.appendChild( this._renderer.domElement );
+        container.appendChild(this._renderer.domElement);
     }
 
-    drawCanvas(container){
-        this._canvas.style.width = container.clientWidth+'px';
-        this._canvas.style.height = container.clientHeight+'px';
+    drawCanvas(container) {
+        this._canvas.style.width = container.clientWidth + 'px';
+        this._canvas.style.height = container.clientHeight + 'px';
         this._container = container;
         this._container.prepend(this._canvas);
         this.updateOffsets();
 
     }
 
-    updateOffsets(){
+    updateOffsets() {
 
         var cLeft = this._canvas.offsetLeft;
         var cWidth = this._canvas.offsetWidth;
@@ -212,7 +213,7 @@ class WrapviewInstance {
                 height: cHeight
             }
         }
-        console.log('-- Offsets --',this._offsets);
+        console.log('-- Offsets --', this._offsets);
     }
 
     addLight(light) {
@@ -237,17 +238,17 @@ class WrapviewInstance {
         delete this._objects[light.id];
     }
 
-    unload(){
+    unload() {
         const objects = Object.keys(this._objects);
-        objects.forEach((obj_id)=>{
+        objects.forEach((obj_id) => {
             this.removeObject(this._objects[obj_id]);
         });
 
         const lights = Object.keys(this._lights);
-        lights.forEach((light_id)=>{
+        lights.forEach((light_id) => {
             this.removeLight(this._lights[light_id]);
         });
-        if(this._frameRef !== null) {
+        if (this._frameRef !== null) {
             cancelAnimationFrame(this._frameRef);
         }
         this._scene = null;
@@ -258,6 +259,3 @@ class WrapviewInstance {
 
 
 }
-
-
-export { WrapviewInstance };

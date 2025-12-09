@@ -1,15 +1,14 @@
 import {
     CanvasTexture,
     sRGBEncoding,
-    NearestMipmapNearestFilter, NearestFilter
+    NearestFilter
 } from 'three';
-import {WrapviewEditor} from './WrapviewEditor.js'
-import {WrapviewSettings} from "./WrapviewSettings.js";
-import {WrapviewParameter} from "./WrapviewParameter.js";
-import {WrapviewUtils} from "./WrapviewUtils.js";
-import {WrapviewTexturedMaterial} from "./WrapviewMaterial.js";
+import { WrapviewSettings } from "./WrapviewSettings.js";
+import { WrapviewParameter } from "./WrapviewParameter.js";
+import { WrapviewUtils } from "./WrapviewUtils.js";
+import { WrapviewTexturedMaterial } from "./WrapviewMaterial.js";
 
-class WrapviewTexture {
+export class WrapviewTexture {
     constructor(material, settings) {
         this.settings = {};
         _.merge(this.settings, this.defaults(), settings);
@@ -34,7 +33,7 @@ class WrapviewTexture {
 
     defaults() {
         return {
-            color: new WrapviewParameter(null, WrapviewUtils.guid(),{
+            color: new WrapviewParameter(null, WrapviewUtils.guid(), {
                 type: 'fixed',
                 value: '#FFFFFF'
             }),
@@ -53,7 +52,7 @@ class WrapviewTexture {
         return this._material;
     }
 
-    setMaterial(m){
+    setMaterial(m) {
         this._material = m;
     }
     init() {
@@ -64,11 +63,11 @@ class WrapviewTexture {
         return this._texture;
     }
 
-    editor(){
+    editor() {
         return this._editor;
     }
 
-    offsets(){
+    offsets() {
         return this._offsets;
     }
 
@@ -81,7 +80,7 @@ class WrapviewTexture {
     addLayer(layer) {
         layer.setTexture(this);
         this._layers.push(layer);
-        return this._layers.length -1;
+        return this._layers.length - 1;
     }
 
     setBaseLayer(layer) {
@@ -89,15 +88,15 @@ class WrapviewTexture {
         this._baseLayer = layer;
     }
 
-    baseLayer(){
+    baseLayer() {
         return this._baseLayer;
     }
 
-    layers(n){
-        if(typeof n === 'undefined') {
+    layers(n) {
+        if (typeof n === 'undefined') {
             return this._layers;
         }
-        if(this._layers[n]) {
+        if (this._layers[n]) {
             return this._layers[n];
         }
         return null;
@@ -113,8 +112,8 @@ class WrapviewTexture {
         var layerSelected = false;
         var layers = _.cloneDeep(this._layers);
         layers = layers.reverse();
-        layers.forEach((l,i)=>{
-            if(!layerSelected) {
+        layers.forEach((l, i) => {
+            if (!layerSelected) {
                 if (!l.isLocked && l.isInBounds({
                     x: point.x * this.offsets().ratio.x,
                     y: point.y * this.offsets().ratio.y
@@ -130,28 +129,28 @@ class WrapviewTexture {
 
     editLayerById(id) {
         var map = {};
-        this._layers.forEach((l, i)=>{
+        this._layers.forEach((l, i) => {
             map[l.id] = i;
         });
         this.editLayer(map[id]);
     }
 
     removeCurrentLayer() {
-        if(!this.isEditingLayer()) {
+        if (!this.isEditingLayer()) {
             return;
         }
-        this._layers.splice(this._editingLayer,1);
+        this._layers.splice(this._editingLayer, 1);
         this.stopEditingLayer();
     }
 
 
     removeLayerById(id) {
         var map = {};
-        this._layers.forEach((l, i)=>{
+        this._layers.forEach((l, i) => {
             map[l.id] = i;
         });
-        this._layers.splice(map[id],1);
-        if(this._editingLayer === map[id]) {
+        this._layers.splice(map[id], 1);
+        if (this._editingLayer === map[id]) {
             this.stopEditingLayer();
         }
 
@@ -161,7 +160,7 @@ class WrapviewTexture {
         this._editingLayer = -1;
         this.render();
     }
-    isEditing(){
+    isEditing() {
         return this._isEditing;
     }
     isEditingLayer() {
@@ -169,23 +168,23 @@ class WrapviewTexture {
     }
 
     editingLayer() {
-        if(typeof this._editingLayer === 'undefined') return null;
-        if(this._editingLayer === -1) return null;
+        if (typeof this._editingLayer === 'undefined') return null;
+        if (this._editingLayer === -1) return null;
         return this.layers(this._editingLayer);
     }
 
-    beginEditing(){
-        return new Promise((resolve)=>{
+    beginEditing() {
+        return new Promise((resolve) => {
             this._editingLayer = -1;
             this._isEditing = true;
             this.acquire();
-            var offsets = _.merge({},this.material().instance().offsets());
+            var offsets = _.merge({}, this.material().instance().offsets());
             offsets['ratio'] = {
                 x: this.settings.size.width / offsets.size.width,
                 y: this.settings.size.height / offsets.size.height
             }
             this._offsets = offsets;
-            this.material()?.beginEditing().then(()=>{
+            this.material()?.beginEditing().then(() => {
                 this.render();
                 resolve();
             });
@@ -193,24 +192,24 @@ class WrapviewTexture {
 
     }
 
-    endEditing(){
-        return new Promise((resolve)=>{
+    endEditing() {
+        return new Promise((resolve) => {
             this._isEditing = false;
             this.capture();
             this._editingLayer = -1;
-            if(this._texture && typeof this._texture.dispose === 'function') {
+            if (this._texture && typeof this._texture.dispose === 'function') {
                 this._texture.dispose();
 
             }
             this._texture = null;
             this.release();
-            this.material()?.endEditing().then(()=>{
+            this.material()?.endEditing().then(() => {
                 resolve();
             });
         })
     }
 
-    acquire(){
+    acquire() {
         this.material().instance().beginEditingTexture(this);
         this._context = this.material().instance().canvas().getContext('2d');
         this._texture = new CanvasTexture(this.material().instance().canvas());
@@ -221,7 +220,7 @@ class WrapviewTexture {
     }
 
     prep() {
-        if(!this._canvasInitialized) {
+        if (!this._canvasInitialized) {
             this.acquire();
         }
         //this.material().instance().editor().canvas().width = this.settings.size.width;
@@ -230,20 +229,20 @@ class WrapviewTexture {
         this.material().instance().canvas().height = this.settings.size.height;
     }
 
-    release(){
+    release() {
         this._canvasInitialized = false;
         this.material().instance().canvas().width = 1;
         this.material().instance().canvas().height = 1;
-        if(this._withEditor) {
+        if (this._withEditor) {
             this.material().instance().editor().release();
         }
         this.material().instance().endEditingTexture();
         this._context = null;
     }
 
-    renderPrint(panel){
+    renderPrint(panel) {
         this._baseLayer.setVectorBase(panel);
-        this._layers.forEach((layer, i)=>{
+        this._layers.forEach((layer, i) => {
             layer.drawVector(panel);
         });
     }
@@ -251,26 +250,26 @@ class WrapviewTexture {
     render() {
 
         this.prep();
-        this._context.clearRect(0,0, this.settings.size.width, this.settings.size.height);
+        this._context.clearRect(0, 0, this.settings.size.width, this.settings.size.height);
         this._context.globalCompositeOperation = 'source-over';
 
         //this._baseLayer.fillCanvas(this._context)
         this._baseLayer.draw(this._context);
-        this._layers.forEach((layer, i)=>{
+        this._layers.forEach((layer, i) => {
             this._context.globalCompositeOperation = 'source-atop';
             layer.draw(this._context);
         });
         this._texture.needsUpdate = true;
-        if(this.material().instance().settings.mode === 'editor' && this._isEditing) {
+        if (this.material().instance().settings.mode === 'editor' && this._isEditing) {
             this.material().instance().editor().render(this);
         }
 
 
     }
 
-    capture(){
+    capture() {
 
-        if(this.material() instanceof WrapviewTexturedMaterial) {
+        if (this.material() instanceof WrapviewTexturedMaterial) {
             this.material()?.setCapturedTexture(
                 WrapviewSettings.agent.loaders.texture.load(this.material().instance().canvas().toDataURL("image/png")),
                 this.material().instance().canvas().toDataURL("image/png")
@@ -279,11 +278,11 @@ class WrapviewTexture {
         this.release();
     }
 
-    saveImage(imageData){
-        return new Promise((resolve, reject)=>{
+    saveImage(imageData) {
+        return new Promise((resolve, reject) => {
             var url = '/api/assets/upload/data';
             axios(url, {
-                method:'post',
+                method: 'post',
                 data: {
                     asset: imageData,
                     path: 'captures',
@@ -294,62 +293,12 @@ class WrapviewTexture {
                 },
                 responseType: 'json',
             })
-            .then((response) => {
-                resolve(response.data.url);
-            })
-            .catch((error) => {
-                reject(error);
-            });
+                .then((response) => {
+                    resolve(response.data.url);
+                })
+                .catch((error) => {
+                    reject(error);
+                });
         });
     }
-}
-
-// Add a helper that always returns a THREE.Texture for this WrapviewTexture instance.
-// Relies on THREE being available in this module (the file already imports three in the original code).
-// It caches the created texture on this.threeTexture.
-WrapviewTexture.prototype.toTexture = function() {
-    // prefer existing cached three texture
-    if (this.threeTexture) return this.threeTexture;
-    // prefer any explicit texture property
-    if (this.texture) return this.texture;
-    // canvas-backed texture
-    if (this.canvas) {
-        const tex = new THREE.CanvasTexture(this.canvas);
-        tex.needsUpdate = true;
-        this.threeTexture = tex;
-        return tex;
-    }
-    // image-backed texture
-    if (this.image) {
-        const tex = new THREE.Texture(this.image);
-        tex.needsUpdate = true;
-        this.threeTexture = tex;
-        return tex;
-    }
-    // if object can render into an internal canvas, try to invoke it then use canvas
-    if (typeof this.render === 'function') {
-        try { this.render(); } catch (e) { /* ignore render errors */ }
-        if (this.canvas) {
-            const tex = new THREE.CanvasTexture(this.canvas);
-            tex.needsUpdate = true;
-            this.threeTexture = tex;
-            return tex;
-        }
-    }
-    // fallback: create a minimal 1x1 white canvas texture
-    const c = document.createElement('canvas');
-    c.width = c.height = 1;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 1, 1);
-    const tex = new THREE.CanvasTexture(c);
-    tex.needsUpdate = true;
-    this.threeTexture = tex;
-    return tex;
-};
-
-
-
-export  {
-    WrapviewTexture
 }

@@ -1,20 +1,20 @@
-import {Wrapview} from "./Wrapview";
-import {OrbitControls} from "./plugins/OrbitControls";
-import {DoubleSide, HemisphereLight, LoadingManager, MeshBasicMaterial, TorusKnotGeometry} from "three";
-import {OBJLoader} from "./plugins/ObjLoader";
+import { Wrapview } from "./Wrapview";
+import { OrbitControls } from "./plugins/OrbitControls";
+import { DoubleSide, HemisphereLight, LoadingManager, MeshBasicMaterial, TorusKnotGeometry } from "three";
+import { OBJLoader } from "./plugins/ObjLoader";
 
-class WrapviewViewer {
+export class WrapviewViewer {
     constructor(id) {
         this.id = id;
-        this.animate = ()=>{
-            requestAnimationFrame( this.animate );
+        this.animate = () => {
+            requestAnimationFrame(this.animate);
             this.wrapview._controller.update();
-            this.wrapview._renderer.render( this.wrapview._scene, this.wrapview._camera );
+            this.wrapview._renderer.render(this.wrapview._scene, this.wrapview._camera);
         }
     }
 
     init() {
-        this.wrapview = new Wrapview('modelTest',{});
+        this.wrapview = new Wrapview('modelTest', {});
         this.wrapview.init();
         var orbitController = new OrbitControls(this.wrapview.camera(), this.wrapview.renderer().domElement);
         this.wrapview.setController(orbitController);
@@ -27,10 +27,10 @@ class WrapviewViewer {
 
 
         const geometry = new TorusKnotGeometry();
-        var cube = new THREE.Mesh( geometry, new MeshLambertMaterial({
+        var cube = new THREE.Mesh(geometry, new MeshLambertMaterial({
             map: texture,
             color: '#FFFFFF'
-        }) );
+        }));
         this.wrapview._scene.add(cube);
         this.animate();
         /*
@@ -67,8 +67,3 @@ class WrapviewViewer {
     }
 
 }
-
-
-export {
-    WrapviewViewer
-};

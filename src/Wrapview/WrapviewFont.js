@@ -1,11 +1,11 @@
-class WrapviewFont {
+export class WrapviewFont {
     constructor(props) {
         this.family = props.family;
         this.source = props.source;
         this.loaded = false;
     }
 
-    setTemplate(t){
+    setTemplate(t) {
         this._template = t;
     }
 
@@ -15,8 +15,4 @@ class WrapviewFont {
             source: this.source
         }
     }
-}
-
-export {
-    WrapviewFont
 }

@@ -1,7 +1,4 @@
-import {WrapviewUtils} from "./WrapviewUtils.js";
-import {WrapviewImageLayer, WrapviewTextLayer} from "./WrapviewLayer.js";
-
-class WrapviewEditor {
+export class WrapviewEditor {
     constructor(id, instance) {
         this.id = id;
         this._instance = instance;
@@ -23,11 +20,11 @@ class WrapviewEditor {
         this._currentIndex = i;
     }
 
-    canvas(){
+    canvas() {
         return this._canvas;
     }
 
-    init(){
+    init() {
         /*
         this._div = document.createElement('div');
         this._div.className = 'absolute inset-0';
@@ -49,12 +46,12 @@ class WrapviewEditor {
 
     }
 
-    instance(){
+    instance() {
         return this._instance;
     }
 
-    refresh(){
-        if(this._container === null) return;
+    refresh() {
+        if (this._container === null) return;
     }
 
     setEditorElement(elem, container) {
@@ -550,8 +547,4 @@ class WrapviewEditor {
          */
     }
 
-}
-
-export {
-    WrapviewEditor
 }
