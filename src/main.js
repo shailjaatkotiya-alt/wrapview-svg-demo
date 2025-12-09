@@ -3,7 +3,6 @@ import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
 import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
-import { WrapviewSVGEditor } from './Wrapview/WrapviewSVGEditor.js'; // Ensure this import is present
 
 WrapviewSettings.init();
 

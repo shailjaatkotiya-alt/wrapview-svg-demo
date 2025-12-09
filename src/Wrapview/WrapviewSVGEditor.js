@@ -183,9 +183,11 @@ class WrapviewSVGEditor {
                     originX: 'center',
                     originY: 'center'
                 });
-                const radius = this._getShapeIntensity() * 1.5; // Adjust radius based on shape intensity
+                
+                const intensity = this._getShapeIntensity() / 100; // Normalize intensity to a 0-1 range
+                const radius = 200 * intensity; // Adjust radius based on intensity
                 const len = text.length;
-                const angleRange = Math.PI * 0.8 * (this._getShapeIntensity() / 100); // Adjust angle range
+                const angleRange = Math.PI * intensity; // Adjust angle range based on intensity
                 const startAngle = -Math.PI / 2 - angleRange / 2;
 
                 for (let i = 0; i < len; i++) {
@@ -199,6 +201,12 @@ class WrapviewSVGEditor {
                     });
                     group.addWithUpdate(c);
                 }
+
+                // Adjust character spacing
+                const totalWidth = (len - 1) * spacing; // Calculate total spacing
+                const offset = totalWidth / 2; // Center the spacing offset
+                group.left -= offset; // Adjust group position to center
+
                 return group;
             },
 
