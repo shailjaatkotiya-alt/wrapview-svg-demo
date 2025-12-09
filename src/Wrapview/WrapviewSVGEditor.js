@@ -1,5 +1,3 @@
-import _ from 'lodash';
-
 class WrapviewSVGEditor {
     constructor(instance) {
         this._instance = instance;
@@ -187,9 +185,9 @@ class WrapviewSVGEditor {
                 });
                 
                 const intensity = this._getShapeIntensity() / 100; // Normalize intensity to a 0-1 range
-                const radius = 200 * intensity; // Adjust radius based on intensity
+                const radius = 250 * intensity; // Increased radius for less curvature
                 const len = text.length;
-                const angleRange = Math.PI * intensity; // Adjust angle range based on intensity
+                const angleRange = Math.PI * 0.5 * intensity; // Reduced angle range for less curvature (was Math.PI)
                 const startAngle = -Math.PI / 2 - angleRange / 2;
 
                 for (let i = 0; i < len; i++) {
