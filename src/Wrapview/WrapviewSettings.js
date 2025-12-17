@@ -15,7 +15,8 @@ export class WrapviewSettings {
             audio: null,
             environment: null
         },
-        lodLevel: 0
+        lodLevel: 0,
+        enableGPT5MiniForAllClients: true
     };
 
     static init() {

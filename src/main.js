@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
-import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewTextVector } from './Wrapview/WrapviewTextVector.js';
 
 WrapviewSettings.init();
+
+// Enable GPT-5 mini for all clients
+console.log("Enable GPT-5 mini for all clients");
 
 // Initialize Wrapview 3D instance
 const threeDiv = document.getElementById("viewer-container");
@@ -56,15 +59,7 @@ dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// Setup SVG text editor
-const svgContainer = document.getElementById('editor-panel');
-const svgEditor = wrapviewInstance.svgEditor();
-if (svgContainer && svgEditor) {
-    svgEditor.attachTo(svgContainer);
-} else {
-    console.warn('SVG editor or container not available.');
-}
-
+// ---- TextVector layer setup and UI bindings ----
 const quickTextInput = document.getElementById('quick-text-input');
 const fillColorInput = document.getElementById('fill-color-input');
 const outlineColorInput = document.getElementById('outline-color-input');
@@ -80,39 +75,29 @@ const shapeIntensitySlider = document.getElementById('shape-intensity-slider');
 const shapeIntensityValue = document.getElementById('shape-intensity-value');
 let outlineEnabled = false;
 
-// SVG layer and texture management
-let currentSvgLayer = new WrapviewSVGLayer('svgTextLayer', {
+// Create TextVector layer
+const textVectorLayer = new WrapviewTextVector('textVectorLayer', {
+    fontFamily: 'Impact',
+    fontSize: 100,
+    text: (quickTextInput?.value) || 'HELLO WORLD',
+    color: { fill: (fillColorInput?.value) || '#000000' },
+    outline: { include: false, color: (outlineColorInput?.value) || '#000000', thickness: parseFloat(outlineWidthInput?.value) || 2 },
     size: { width: 2048, height: 2048 },
     pivot: { x: 0.5, y: 0.5 },
     position: { x: 1024, y: 1024 },
     angle: 0
 });
+
 let currentTextTexture = null;
 
-// Helper to apply text texture to cube front face
-const applyTextTextureToCube = async (dataUrl) => {
-    if (!dataUrl) {
-        console.warn('No data URL provided for texture');
-        return;
-    }
-
+const updateCubeTextureFromLayer = async () => {
     try {
-        // Update SVG layer with new data URL
-        await currentSvgLayer.updateFromDataUrl(dataUrl);
-        
-        // Get canvas from layer
-        const canvas = currentSvgLayer.getCanvas();
-        if (!canvas) {
-            console.error('Failed to get canvas from SVG layer');
-            return;
-        }
+        await textVectorLayer.generateTexture();
+        const canvas = textVectorLayer.getCanvas();
+        if (!canvas) return;
 
-        // Dispose old texture if it exists
-        if (currentTextTexture) {
-            currentTextTexture.dispose();
-        }
+        if (currentTextTexture) currentTextTexture.dispose();
 
-        // Create texture from layer canvas
         currentTextTexture = new THREE.CanvasTexture(canvas);
         currentTextTexture.needsUpdate = true;
         currentTextTexture.magFilter = THREE.NearestFilter;
@@ -120,7 +105,6 @@ const applyTextTextureToCube = async (dataUrl) => {
         currentTextTexture.generateMipmaps = true;
         currentTextTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-        // Apply material to cube
         const textMaterial = new THREE.MeshBasicMaterial({
             map: currentTextTexture,
             transparent: true,
@@ -130,144 +114,125 @@ const applyTextTextureToCube = async (dataUrl) => {
 
         materials[4] = textMaterial;
         cube.material = materials;
-        console.log('Text texture applied to cube front face via WrapviewSVGLayer');
-    } catch (error) {
-        console.error('Error applying text texture:', error);
+    } catch (err) {
+        console.error('Failed updating cube texture from TextVector:', err);
     }
 };
 
-// Setup editor change listener for real-time texture updates
-if (svgEditor) {
-    svgEditor.setOnChange((dataUrl) => {
-        if (dataUrl) {
-            applyTextTextureToCube(dataUrl);
-        }
-    });
+// Bind UI controls to TextVector functions
+const updateText = () => {
+    if (!quickTextInput) return;
+    textVectorLayer.setText(quickTextInput.value || '');
+    updateCubeTextureFromLayer();
+};
 
-    const updateText = () => {
-        if (!quickTextInput) return;
-        svgEditor.setText(quickTextInput.value || '');
-    };
+const updateFillColor = () => {
+    if (!fillColorInput) return;
+    textVectorLayer.setFillColor(fillColorInput.value || '#000000');
+    updateCubeTextureFromLayer();
+};
 
-    const updateFillColor = () => {
-        if (!fillColorInput) return;
-        svgEditor.setFillColor(fillColorInput.value || '#000000');
-    };
+const updateFontFamily = () => {
+    if (!fontFamilySelect) return;
+    const selectedOption = fontFamilySelect.options[fontFamilySelect.selectedIndex];
+    const fontValue = fontFamilySelect.value || 'Impact';
+    const fontUrl = selectedOption.dataset.fontUrl;
 
-    const updateFontFamily = () => {
-        if (!fontFamilySelect) return;
-        svgEditor.setFontFamily(fontFamilySelect.value || 'Impact');
-    };
-
-    const updateFontSize = () => {
-        if (!fontSizeSlider) return;
-        const size = parseInt(fontSizeSlider.value) || 60;
-        if (fontSizeValue) fontSizeValue.textContent = size;
-        svgEditor.setFontSize(size);
-    };
-
-    const updateOutline = () => {
-        const width = parseFloat(outlineWidthInput?.value) || 0;
-        const color = outlineColorInput?.value || '#000000';
-        svgEditor.setOutline({ enabled: outlineEnabled, color, width });
-    };
-
-    const toggleOutline = () => {
-        outlineEnabled = !outlineEnabled;
-        if (toggleOutlineButton) {
-            toggleOutlineButton.dataset.enabled = outlineEnabled.toString();
-            toggleOutlineButton.textContent = outlineEnabled ? 'Outline On' : 'Outline Off';
-        }
-        updateOutline();
-    };
-
-    const setEffect = (effect) => {
-        if (!effect) return;
-        svgEditor.setEffect(effect);
-        effectButtons.forEach(btn => {
-            if (btn.dataset.effect === effect) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    };
-
-    const updateCharSpacing = () => {
-        const spacing = parseInt(charSpacingSlider.value) || 0;
-        charSpacingValue.textContent = spacing;
-        if (svgEditor) {
-            svgEditor.setCharSpacing(spacing);
-        }
-    };
-
-    const updateShapeIntensity = () => {
-        const intensity = parseInt(shapeIntensitySlider.value) || 100;
-        shapeIntensityValue.textContent = intensity;
-        if (svgEditor) {
-            svgEditor.setShapeIntensity(intensity);
-        }
-    };
-
-    if (quickTextInput) {
-        quickTextInput.addEventListener('input', updateText);
+    if (fontUrl) {
+        console.log('Loading Google Font from:', fontUrl);
+        textVectorLayer.loadGoogleFont(fontUrl)
+            .then(() => {
+                textVectorLayer.setFontUrl(fontUrl);
+                textVectorLayer.setFontFamily(fontValue);
+                updateCubeTextureFromLayer();
+            })
+            .catch(err => {
+                console.error('Failed to load Google Font:', err);
+                textVectorLayer.setFontUrl(null);
+                textVectorLayer.setFontFamily('Impact');
+                updateCubeTextureFromLayer();
+            });
+    } else {
+        textVectorLayer.setFontUrl(null);
+        textVectorLayer.setFontFamily(fontValue);
+        updateCubeTextureFromLayer();
     }
+};
 
-    if (fillColorInput) {
-        fillColorInput.addEventListener('input', updateFillColor);
-    }
+const updateFontSize = () => {
+    if (!fontSizeSlider) return;
+    const size = parseInt(fontSizeSlider.value) || 60;
+    if (fontSizeValue) fontSizeValue.textContent = size;
+    textVectorLayer.setFontSize(size);
+    updateCubeTextureFromLayer();
+};
 
-    if (fontFamilySelect) {
-        fontFamilySelect.addEventListener('change', updateFontFamily);
-    }
+const updateOutline = () => {
+    const width = parseFloat(outlineWidthInput?.value) || 0;
+    const color = outlineColorInput?.value || '#000000';
+    textVectorLayer.setOutline({ enabled: outlineEnabled, color, width });
+    updateCubeTextureFromLayer();
+};
 
-    if (fontSizeSlider) {
-        fontSizeSlider.addEventListener('input', updateFontSize);
-    }
-
-    if (outlineColorInput) {
-        outlineColorInput.addEventListener('input', updateOutline);
-    }
-
-    if (outlineWidthInput) {
-        outlineWidthInput.addEventListener('input', updateOutline);
-    }
-
+const toggleOutline = () => {
+    outlineEnabled = !outlineEnabled;
     if (toggleOutlineButton) {
-        toggleOutlineButton.addEventListener('click', toggleOutline);
+        toggleOutlineButton.dataset.enabled = outlineEnabled.toString();
+        toggleOutlineButton.textContent = outlineEnabled ? 'Outline On' : 'Outline Off';
     }
-
-    if (effectButtons.length) {
-        effectButtons.forEach(btn => {
-            btn.addEventListener('click', () => setEffect(btn.dataset.effect));
-        });
-    }
-
-    charSpacingSlider.addEventListener('input', updateCharSpacing);
-    shapeIntensitySlider.addEventListener('input', updateShapeIntensity);
-
-    // Seed editor with initial UI values
-    updateText();
-    updateFillColor();
-    updateFontFamily();
-    updateFontSize();
     updateOutline();
-    updateCharSpacing();
-    updateShapeIntensity();
-    const initialEffect = Array.from(effectButtons).find(b => b.classList.contains('active'))?.dataset.effect || 'none';
-    setEffect(initialEffect);
+};
+
+const updateCharSpacing = () => {
+    const spacing = parseInt(charSpacingSlider.value) || 0;
+    if (charSpacingValue) charSpacingValue.textContent = spacing;
+    textVectorLayer.setCharSpacing(spacing);
+    updateCubeTextureFromLayer();
+};
+
+const updateShapeIntensity = () => {
+    const intensity = parseInt(shapeIntensitySlider.value) || 100;
+    if (shapeIntensityValue) shapeIntensityValue.textContent = intensity;
+    textVectorLayer.setShapeIntensity(intensity);
+    updateCubeTextureFromLayer();
+};
+
+// Effects: connect buttons to setEffect on the TextVector layer
+if (effectButtons && effectButtons.length) {
+    effectButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const effect = btn.dataset.effect || 'none';
+            // Toggle active class
+            effectButtons.forEach(b => b.classList.toggle('active', b === btn));
+            // Set effect and re-generate texture
+            textVectorLayer.setEffect(effect);
+            // For 'pinch', you may register a custom processor:
+            // textVectorLayer.setEffectProcessor((svg, eff, params) => {/* return processed svg */});
+            updateCubeTextureFromLayer();
+        });
+    });
 }
 
-// Initialize text texture on startup
-if (svgEditor) {
-    setTimeout(() => {
-        const initialDataUrl = svgEditor.getDataURL();
-        if (initialDataUrl) {
-            applyTextTextureToCube(initialDataUrl);
-            console.log('Initial text texture loaded via WrapviewSVGLayer');
-        }
-    }, 500);
-}
+// Attach listeners
+quickTextInput?.addEventListener('input', updateText);
+fillColorInput?.addEventListener('input', updateFillColor);
+fontFamilySelect?.addEventListener('change', updateFontFamily);
+fontSizeSlider?.addEventListener('input', updateFontSize);
+outlineColorInput?.addEventListener('input', updateOutline);
+outlineWidthInput?.addEventListener('input', updateOutline);
+toggleOutlineButton?.addEventListener('click', toggleOutline);
+charSpacingSlider?.addEventListener('input', updateCharSpacing);
+shapeIntensitySlider?.addEventListener('input', updateShapeIntensity);
+
+// Seed with initial values and apply texture once
+updateText();
+updateFillColor();
+updateFontFamily();
+updateFontSize();
+updateOutline();
+updateCharSpacing();
+updateShapeIntensity();
+updateCubeTextureFromLayer();
 
 function animate() {
     requestAnimationFrame(animate);
