@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
-import { WrapviewVectorTextLayer } from './Wrapview/WrapviewLayer.js';
 import { WrapviewVectorText } from './Wrapview/WrapviewVectorText.js';
 
 WrapviewSettings.init();
@@ -57,15 +56,16 @@ dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-const quickTextInput = document.getElementById('quick-text-input');
-
 let vectorText = new WrapviewVectorText('vectorText', {});
+let currentEffect = 'none';
 if (vectorText) {
     vectorText.addNoneEffect();
+    currentEffect = 'none';
     setTimeout(() => {
         applyViewportSvgTextureToMesh();
     }, 500);
 }
+
 let vectorTextTexture = null;
 
 const applyViewportSvgTextureToMesh = async () => {
@@ -112,15 +112,115 @@ const applyViewportSvgTextureToMesh = async () => {
     }
 };
 
-// Add event listener to apply viewport SVG texture on demand
 if (document.getElementById('apply-arch-effect-btn')) {
     document.getElementById('apply-arch-effect-btn').addEventListener('click', () => {
         if (vectorText) {
-            vectorText.addArchEffect();
-            setTimeout(() => {
-                applyViewportSvgTextureToMesh();
-            }, 500);
+            currentEffect = 'arch';
+            renderEffectAndApplyTexture();
         }
+    });
+}
+
+if (document.getElementById('apply-none-effect-btn')) {
+    document.getElementById('apply-none-effect-btn').addEventListener('click', () => {
+        if (vectorText) {
+            currentEffect = 'none';
+            renderEffectAndApplyTexture();
+        }
+    });
+}
+
+if (document.getElementById('apply-flag-effect-btn')) {
+    document.getElementById('apply-flag-effect-btn').addEventListener('click', () => {
+        if (vectorText) {
+            currentEffect = 'flag';
+            renderEffectAndApplyTexture();
+        }
+    });
+}
+
+// Helper to rerender text with current effect and update the texture
+const renderEffectAndApplyTexture = () => {
+    if (!vectorText) return;
+    if (currentEffect === 'arch') {
+        vectorText.addArchEffect();
+    } else if (currentEffect === 'flag') {
+        vectorText.addFlagEffect();
+    } else {
+        vectorText.addNoneEffect();
+    }
+    setTimeout(() => {
+        applyViewportSvgTextureToMesh();
+    }, 500);
+};
+
+// UI bindings for text editing and styling
+const textInput = document.getElementById('quick-text-input');
+if (textInput) {
+    textInput.addEventListener('input', (e) => {
+        vectorText.setText(e.target.value || '');
+        renderEffectAndApplyTexture();
+    });
+}
+
+const fontSizeSlider = document.getElementById('font-size-slider');
+const fontSizeValue = document.getElementById('font-size-value');
+if (fontSizeSlider) {
+    const updateFontSize = (val) => {
+        const size = parseInt(val, 10);
+        if (Number.isFinite(size)) {
+            vectorText.setFontSize(size);
+            if (fontSizeValue) fontSizeValue.textContent = String(size);
+            renderEffectAndApplyTexture();
+        }
+    };
+    // initialize display
+    updateFontSize(fontSizeSlider.value);
+    fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
+}
+
+const fillColorInput = document.getElementById('fill-color-input');
+if (fillColorInput) {
+    fillColorInput.addEventListener('input', (e) => {
+        const color = e.target.value;
+        vectorText.setFontColor(color);
+        renderEffectAndApplyTexture();
+    });
+}
+
+const outlineColorInput = document.getElementById('outline-color-input');
+if (outlineColorInput) {
+    outlineColorInput.addEventListener('input', (e) => {
+        const color = e.target.value;
+        vectorText.setOutlineColor(color);
+        renderEffectAndApplyTexture();
+    });
+}
+
+const outlineWidthInput = document.getElementById('outline-width-input');
+if (outlineWidthInput) {
+    outlineWidthInput.addEventListener('input', (e) => {
+        const thickness = parseInt(e.target.value, 10);
+        if (Number.isFinite(thickness)) {
+            vectorText.setOutlineThickness(thickness);
+            renderEffectAndApplyTexture();
+        }
+    });
+}
+
+const toggleOutlineBtn = document.getElementById('toggle-outline-btn');
+if (toggleOutlineBtn) {
+    // initialize button state from vectorText
+    const setBtnState = (enabled) => {
+        toggleOutlineBtn.dataset.enabled = String(!!enabled);
+        toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
+    };
+    setBtnState(vectorText.getOutlineEnabled());
+    toggleOutlineBtn.addEventListener('click', () => {
+        const isEnabled = vectorText.getOutlineEnabled();
+        vectorText.setOutlineEnabled(!isEnabled);
+        setBtnState(!isEnabled);
+        renderEffectAndApplyTexture();
     });
 }
 

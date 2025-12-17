@@ -17,12 +17,9 @@ class WrapviewVectorText {
             outlineThickness: 2
         };
         this.settings = Object.assign({}, this._text_defaults, settings || {});
-        this._textDiv = null;
         this._svgContainer = null;
         this._canvas = null;
-        this._text = '';
         this._onUpdate = null;
-        this._fontFamily = this.settings.fontFamily;
         this._root = null;
         this._path = null;
         this.svgElement = null;
@@ -31,10 +28,7 @@ class WrapviewVectorText {
         this._ensureSvgContainer();
 
         // Load Google Font
-        this._loadGoogleFont(this._fontFamily);
-
-        // Create text div with Google font
-        this._createTextDiv();
+        this._loadGoogleFont(this._text_defaults.fontFamily);
 
         // Initialize SVG with text
         this._initializeViewportSvg();
@@ -64,18 +58,6 @@ class WrapviewVectorText {
         }
     }
 
-    _createTextDiv() {
-        // Create text container div
-        this._textDiv = document.createElement('div');
-        this._textDiv.id = `textDiv-${this.id}`;
-        this._textDiv.style.fontFamily = `'${this._fontFamily}', sans-serif`;
-        this._textDiv.style.fontSize = `${this.settings.fontSize}px`;
-        this._textDiv.style.color = this.settings.fontColor;
-        this._textDiv.style.padding = '20px';
-        this._textDiv.textContent = this.TEXT_VALUE;
-        document.body.appendChild(this._textDiv);
-    }
-
     _initializeViewportSvg() {
         if (this._root) return;
         this._ensureSvgContainer();
@@ -86,28 +68,17 @@ class WrapviewVectorText {
         this.svgElement = this._root.node;
     }
 
-    defaults() {
-        return {
-            fontFamily: 'Arial',
-            fontSize: 16,
-            fontColor: '#000000',
-            outlineEnabled: false,
-            outlineColor: '#000000',
-            outlineThickness: 2
-        }
-    }
-
     getY(x, y) {
         if (!this._path || !Number.isFinite(x) || !Number.isFinite(y)) return y;
         const pathPoint = this._path.pointAt(x);
         if (!pathPoint || !Number.isFinite(pathPoint.y)) return y;
 
-        let normalizedY = (y - (600/2))/(600/2); //height/2
+        let normalizedY = (y - (600 / 2)) / (600 / 2); //height/2
 
         return y + pathPoint.y - this.BASELINE_OFFSET;
     }
 
-    addNoneEffect(){
+    addNoneEffect() {
         this._initializeViewportSvg();
 
         opentype.load(this.FONT_URL, (err, font) => {
@@ -116,7 +87,7 @@ class WrapviewVectorText {
                 return;
             }
 
-            const textModel = new makerjs.models.Text(font, this.getText(), 100, false, false);
+            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 100, false, false);
             const textSvg = makerjs.exporter.toSVG(textModel, {
                 fill: this._text_defaults.fontColor,
                 stroke: this._text_defaults.outlineColor,
@@ -153,7 +124,7 @@ class WrapviewVectorText {
                 return;
             }
 
-            const textModel = new makerjs.models.Text(font, this.getText(), 100, false, false);
+            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 150, false, false);
             const textSvg = makerjs.exporter.toSVG(textModel, {
                 fill: this._text_defaults.fontColor,
                 stroke: this._text_defaults.outlineColor,
@@ -175,8 +146,8 @@ class WrapviewVectorText {
             this._root = draw;
             this.svgElement = draw.node;
 
-            // const path = draw.path('M0,100 C50,50 560,50 560,100').attr({ stroke: 'none', fill: 'none' });
-            const path = draw.path('M0,0 Q'+(600/4)+',-25 '+(600/2)+',0 T'+600+', 0').attr({ stroke: '#009dff', fill: 'none' })
+            const path = draw.path('M0,100 C50,50 560,50 560,100').attr({ stroke: 'none', fill: 'none' });
+            // const path = draw.path('M0,0 Q' + (600 / 4) + ',-25 ' + (600 / 2) + ',0 T' + 600 + ', 0').attr({ stroke: '#009dff', fill: 'none' })
             this._path = path;
 
             const warp = new Warp(group ? group.node : draw.node);
@@ -186,22 +157,48 @@ class WrapviewVectorText {
         });
     }
 
-    setText(text) {
-        this.TEXT_VALUE = text;
-        // Update the text div with new content
-        if (this._textDiv) {
-            this._textDiv.textContent = text;
-        }
+    addFlagEffect() {
+        // Initialize SVG viewport when shape effect is needed
+        this._initializeViewportSvg();
+
+        opentype.load(this.FONT_URL, (err, font) => {
+            if (err) {
+                console.error('Font load failed', err);
+                return;
+            }
+
+            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 100, false, false);
+            const textSvg = makerjs.exporter.toSVG(textModel, {
+                fill: this._text_defaults.fontColor,
+                stroke: this._text_defaults.outlineColor,
+                strokeWidth: this._text_defaults.outlineEnabled ? this._text_defaults.outlineThickness : 0,
+                fillRule: 'evenodd',
+                scalingStroke: false
+            });
+
+            const draw = SVG(textSvg).addClass('Main');
+            draw.size(this.SVG_SIZE, this.SVG_SIZE);
+            draw.id('viewportSvg');
+
+            const group = draw.children()[0];
+            if (group) {
+                group.id('svgGroup');
+            }
+
+            draw.addTo(this._svgContainer);
+            this._root = draw;
+            this.svgElement = draw.node;
+
+            const path = draw.path('M0,0 Q' + (600 / 4) + ',-25 ' + (600 / 2) + ',0 T' + 600 + ', 0').attr({ stroke: '#009dff', fill: 'none' })
+            this._path = path;
+
+            const warp = new Warp(group ? group.node : draw.node);
+            warp.interpolate(20);
+            warp.transform(([x, y]) => [x, this.getY(x, y)]);
+            console.log('Guide path length', path.length());
+        });
     }
 
-    getText() {
-        return this.TEXT_VALUE;
-    }
-
-    /**
-     * Render the SVG in #viewport to canvas
-     * @returns {Promise} Resolves with canvas element
-     */
     renderSvgViewportToCanvas() {
         return new Promise((resolve, reject) => {
             const svgElement = this._root ? this._root.node : document.getElementById('viewportSvg');
@@ -241,6 +238,78 @@ class WrapviewVectorText {
             };
             img.src = url;
         });
+    }
+
+    setText(text) {
+        this.TEXT_VALUE = text;
+        // Update the text div with new content
+        if (this._textDiv) {
+            this._textDiv.textContent = text;
+        }
+    }
+
+    getText() {
+        return this.TEXT_VALUE;
+    }
+
+    getFontFamily() {
+        return this.settings.fontFamily || this._text_defaults.fontFamily;
+    }
+
+    setFontFamily(fontFamily) {
+        if (!fontFamily) return;
+        this._text_defaults.fontFamily = fontFamily;
+        this.settings.fontFamily = fontFamily;
+        this._loadGoogleFont(fontFamily);
+    }
+
+    getFontSize() {
+        return this.settings.fontSize ?? this._text_defaults.fontSize;
+    }
+
+    setFontSize(size) {
+        if (size == null) return;
+        this._text_defaults.fontSize = size;
+        this.settings.fontSize = size;
+    }
+
+    getFontColor() {
+        return this.settings.fontColor ?? this._text_defaults.fontColor;
+    }
+
+    setFontColor(color) {
+        if (!color) return;
+        this._text_defaults.fontColor = color;
+        this.settings.fontColor = color;
+    }
+
+    getOutlineEnabled() {
+        return this.settings.outlineEnabled ?? this._text_defaults.outlineEnabled;
+    }
+
+    setOutlineEnabled(enabled) {
+        this._text_defaults.outlineEnabled = !!enabled;
+        this.settings.outlineEnabled = !!enabled;
+    }
+
+    getOutlineColor() {
+        return this.settings.outlineColor ?? this._text_defaults.outlineColor;
+    }
+
+    setOutlineColor(color) {
+        if (!color) return;
+        this._text_defaults.outlineColor = color;
+        this.settings.outlineColor = color;
+    }
+
+    getOutlineThickness() {
+        return this.settings.outlineThickness ?? this._text_defaults.outlineThickness;
+    }
+
+    setOutlineThickness(thickness) {
+        if (thickness == null) return;
+        this._text_defaults.outlineThickness = thickness;
+        this.settings.outlineThickness = thickness;
     }
 }
 

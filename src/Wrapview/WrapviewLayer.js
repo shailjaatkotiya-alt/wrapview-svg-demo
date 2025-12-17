@@ -1195,7 +1195,7 @@ class WrapviewVectorTextLayer extends WrapviewLayer {
 
     defaults() {
         return {
-            fontFamily: 'Arial',
+            fontFamily: 'ABeeZee',
             fontSize: 16,
             fontColor: '#000000',
             outlineEnabled: false,
