@@ -3,6 +3,7 @@ import {WrapviewSettings} from "./WrapviewSettings.js";
 import {WrapviewParameter} from "./WrapviewParameter.js";
 import {WrapviewFont} from "./WrapviewFont.js";
 import {WrapviewVectorImage} from "./WrapviewVector.js";
+import {WrapviewVectorText} from "./WrapviewVectorText.js";
 
 class WrapviewLayer {
     constructor(id, settings) {
@@ -1183,10 +1184,135 @@ class WrapviewSVGLayer extends WrapviewLayer {
     }
 }
 
+class WrapviewVectorTextLayer extends WrapviewLayer {
+    constructor(id, settings) {
+        super(id, settings);
+        this._vectorText = null;
+        this._image = null;
+        this._canvas = null;
+        this._bounds = null;
+    }
+
+    defaults() {
+        return {
+            fontFamily: 'Arial',
+            fontSize: 16,
+            fontColor: '#000000',
+            outlineEnabled: false,
+            outlineColor: '#000000',
+            outlineThickness: 2,
+            size: { width: 600, height: 600 },
+            pivot: { x: 0.5, y: 0.5 },
+            position: { x: 0, y: 0 },
+            angle: 0
+        };
+    }
+
+    /**
+     * Initialize the vector text instance
+     * @param {Object} textSettings - Settings for the vector text
+     */
+    initVectorText(textSettings) {
+        this._vectorText = new WrapviewVectorText(this.id, textSettings);
+    }
+
+    /**
+     * Set callback for when texture updates
+     * @param {Function} callback - Function to call on update
+     */
+    setOnUpdate(callback) {
+        if (this._vectorText) {
+            this._vectorText.setOnUpdate((canvas) => {
+                this._canvas = canvas;
+                this._loaded = true;
+                this.setNeedsUpdate();
+                callback(canvas);
+            });
+        } else {
+            this._onUpdate = callback;
+        }
+    }
+
+    /**
+     * Load vector text layer
+     * @param {Object} data - Layer data including text and settings
+     * @param {Object} material - Material reference
+     * @returns {Promise} Resolves when loaded
+     */
+    load(data, material) {
+        return new Promise((resolve, reject) => {
+            const text = data.text || '';
+            
+            // Initialize vector text if not already done
+            if (!this._vectorText) {
+                this.initVectorText({
+                    fontFamily: this.settings.fontFamily,
+                    fontSize: this.settings.fontSize,
+                    fontColor: this.settings.fontColor,
+                    outlineEnabled: this.settings.outlineEnabled,
+                    outlineColor: this.settings.outlineColor,
+                    outlineThickness: this.settings.outlineThickness
+                });
+            }
+
+            // Set the text in vector text (this triggers renderToCanvas automatically)
+            this._vectorText.setText(text);
+            
+            // The callback registered via setOnUpdate will handle texture updates
+            resolve();
+        });
+    }
+
+    /**
+     * Get layer data for serialization
+     * @returns {Object} Layer data
+     */
+    getData() {
+        return {
+            type: 'WrapviewVectorTextLayer',
+            data: {
+                text: this._vectorText ? this._vectorText.getText() : ''
+            },
+            settings: {
+                fontFamily: this.settings.fontFamily,
+                fontSize: this.settings.fontSize,
+                fontColor: this.settings.fontColor,
+                outlineEnabled: this.settings.outlineEnabled,
+                outlineColor: this.settings.outlineColor,
+                outlineThickness: this.settings.outlineThickness,
+                size: this.settings.size,
+                pivot: this.settings.pivot,
+                position: this.settings.position,
+                angle: this.settings.angle
+            }
+        };
+    }
+
+    /**
+     * Apply settings to layer
+     * @param {Object} s - Settings object
+     * @param {Object} m - Material reference
+     */
+    applySettings(s, m) {
+        this.settings.fontFamily = s.fontFamily || this.settings.fontFamily;
+        this.settings.fontSize = s.fontSize || this.settings.fontSize;
+        this.settings.fontColor = s.fontColor || this.settings.fontColor;
+        this.settings.outlineEnabled = s.hasOwnProperty('outlineEnabled') ? s.outlineEnabled : this.settings.outlineEnabled;
+        this.settings.outlineColor = s.outlineColor || this.settings.outlineColor;
+        this.settings.outlineThickness = s.outlineThickness || this.settings.outlineThickness;
+    }
+
+    drawHandles(context, editor) {
+        // Vector text layer handles not implemented
+        return;
+    }
+}
+
 export {
     WrapviewLayer,
     WrapviewTextLayer,
     WrapviewImageLayer,
     WrapviewPatternLayer,
-    WrapviewSVGLayer
+    WrapviewSVGLayer,
+    WrapviewVectorTextLayer
 }

@@ -9,10 +9,27 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700&family=Caprasimo&family=Caramel&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Asap+Condensed:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700&family=Caprasimo&family=Caramel&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;700&family=Roboto+Mono:wght@400;700&family=Bebas+Neue&family=Fredoka+One&family=Pacifico&family=Russo+One&family=Abril+Fatface&family=Righteous&display=swap"
+    rel="stylesheet">
   <!-- provide lodash as a global `_` for legacy code that expects it -->
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700&family=Caprasimo&family=Caramel&display=swap"
+    rel="stylesheet">
+  <!-- provide lodash as a global `_` for legacy code that expects it -->
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@svgdotjs/svg.js@3.0/dist/svg.min.js"></script>
+  <script src="http://maker.js.org/target/js/browser.maker.js" type="text/javascript"></script>
+  <script type="module" src="./src/Wrapview/plugins//warp.js"></script>
+
   <script type="importmap">
     {
       "imports": {
@@ -39,15 +56,22 @@
       <div class="control-row">
         <label class="control-label" for="outline-color-input">Outline</label>
         <input type="color" id="outline-color-input" value="#000000">
-        <input type="number" id="outline-width-input" value="2" min="0" max="20" aria-label="Outline width">
+        <input type="number" id="outline-width-input" value="2" min="0" max="20" aria-label="Thickness">
         <button id="toggle-outline-btn" data-enabled="false" type="button">Outline Off</button>
       </div>
 
+
+
+      <div class="control-row intensity-row">
+        <label class="control-label" for="font-size-slider">Size</label>
+        <input type="range" id="font-size-slider" min="50" max="250" value="100" aria-label="Font size intensity">
+        <span id="font-size-value" class="intensity-value">60</span>
+      </div>
+
       <div class="control-row font-selector-row">
-        <label class="control-label" for="font-family-select">Font</label>
-        <select id="font-family-select">
-          <option value="Impact">Impact</option>
-          <option value="Arial">Arial</option>
+        <label class="control-label" for="vector-font-select">Vector Font</label>
+        <select id="vector-font-select">
+          <option value="Roboto" selected>Roboto</option>
           <option value="Asap Condensed">Asap Condensed</option>
           <option value="Baloo 2">Baloo 2</option>
           <option value="Caprasimo">Caprasimo</option>
@@ -57,41 +81,19 @@
           <option value="Roboto Mono">Roboto Mono</option>
           <option value="Bebas Neue">Bebas Neue</option>
           <option value="Fredoka One">Fredoka One</option>
+          <option value="Pacifico">Pacifico</option>
+          <option value="Russo One">Russo One</option>
+          <option value="Abril Fatface">Abril Fatface</option>
+          <option value="Righteous">Righteous</option>
         </select>
       </div>
 
-      <div class="control-row intensity-row">
-        <label class="control-label" for="font-size-slider">Size</label>
-        <input type="range" id="font-size-slider" min="50" max="250" value="100" aria-label="Font size intensity">
-        <span id="font-size-value" class="intensity-value">60</span>
-      </div>
-
-      <div class="control-row effects-row" id="effects-row">
-        <span class="control-label">Shape</span>
-        <div class="effect-buttons">
-          <button class="effect-btn active" data-effect="none" type="button">None</button>
-          <button class="effect-btn" data-effect="arch" type="button">Arch</button>
-          <button class="effect-btn" data-effect="bulge" type="button">Bulge</button>
-          <button class="effect-btn" data-effect="flag" type="button">Flag</button>
-          <button class="effect-btn" data-effect="distort" type="button">Distort</button>
-          <button class="effect-btn" data-effect="Adistort" type="button">Adistort</button>
-          <button class="effect-btn" data-effect="circle" type="button">Circle</button>
-          <button class="effect-btn" data-effect="pinch" type="button">Pinch</button>
-        </div>
-      </div>
-
       <div class="control-row">
-        <label class="control-label" for="char-spacing-slider">Character Spacing</label>
-        <input type="range" id="char-spacing-slider" min="0" max="50" value="0" aria-label="Character spacing intensity">
-        <span id="char-spacing-value" class="intensity-value">0</span>
-      </div>
-      <div class="control-row">
-        <label class="control-label" for="shape-intensity-slider">Shape Intensity</label>
-        <input type="range" id="shape-intensity-slider" min="0" max="100" value="100" aria-label="Shape intensity">
-        <span id="shape-intensity-value" class="intensity-value">100</span>
+        <button id="apply-arch-effect-btn" type="button">Apply Arch Effect</button>
       </div>
     </div>
     <div id="editor-panel" style="display: none;"></div>
+    <div id="svg-preview-container"></div>
   </div>
   <div id="viewer-container"></div>
 </body>

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
-import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewVectorTextLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewVectorText } from './Wrapview/WrapviewVectorText.js';
 
 WrapviewSettings.init();
 
@@ -56,217 +57,71 @@ dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// Setup SVG text editor
-const svgContainer = document.getElementById('editor-panel');
-const svgEditor = wrapviewInstance.svgEditor();
-if (svgContainer && svgEditor) {
-    svgEditor.attachTo(svgContainer);
-} else {
-    console.warn('SVG editor or container not available.');
-}
-
 const quickTextInput = document.getElementById('quick-text-input');
-const fillColorInput = document.getElementById('fill-color-input');
-const outlineColorInput = document.getElementById('outline-color-input');
-const outlineWidthInput = document.getElementById('outline-width-input');
-const toggleOutlineButton = document.getElementById('toggle-outline-btn');
-const fontFamilySelect = document.getElementById('font-family-select');
-const fontSizeSlider = document.getElementById('font-size-slider');
-const fontSizeValue = document.getElementById('font-size-value');
-const effectButtons = document.querySelectorAll('.effect-btn');
-const charSpacingSlider = document.getElementById('char-spacing-slider');
-const charSpacingValue = document.getElementById('char-spacing-value');
-const shapeIntensitySlider = document.getElementById('shape-intensity-slider');
-const shapeIntensityValue = document.getElementById('shape-intensity-value');
-let outlineEnabled = false;
 
-// SVG layer and texture management
-let currentSvgLayer = new WrapviewSVGLayer('svgTextLayer', {
-    size: { width: 2048, height: 2048 },
-    pivot: { x: 0.5, y: 0.5 },
-    position: { x: 1024, y: 1024 },
-    angle: 0
-});
-let currentTextTexture = null;
+let vectorText = new WrapviewVectorText('vectorText', {});
+if (vectorText) {
+    vectorText.addNoneEffect();
+    setTimeout(() => {
+        applyViewportSvgTextureToMesh();
+    }, 500);
+}
+let vectorTextTexture = null;
 
-// Helper to apply text texture to cube front face
-const applyTextTextureToCube = async (dataUrl) => {
-    if (!dataUrl) {
-        console.warn('No data URL provided for texture');
-        return;
-    }
-
+const applyViewportSvgTextureToMesh = async () => {
     try {
-        // Update SVG layer with new data URL
-        await currentSvgLayer.updateFromDataUrl(dataUrl);
-        
-        // Get canvas from layer
-        const canvas = currentSvgLayer.getCanvas();
+        if (!vectorText) {
+            console.error('Vector text not initialized');
+            return;
+        }
+
+        const canvas = await vectorText.renderSvgViewportToCanvas();
+
         if (!canvas) {
-            console.error('Failed to get canvas from SVG layer');
+            console.error('Failed to get canvas from viewport SVG');
             return;
         }
 
         // Dispose old texture if it exists
-        if (currentTextTexture) {
-            currentTextTexture.dispose();
+        if (vectorTextTexture) {
+            vectorTextTexture.dispose();
         }
 
-        // Create texture from layer canvas
-        currentTextTexture = new THREE.CanvasTexture(canvas);
-        currentTextTexture.needsUpdate = true;
-        currentTextTexture.magFilter = THREE.NearestFilter;
-        currentTextTexture.minFilter = THREE.LinearMipmapLinearFilter;
-        currentTextTexture.generateMipmaps = true;
-        currentTextTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        // Create texture from canvas
+        vectorTextTexture = new THREE.CanvasTexture(canvas);
+        vectorTextTexture.needsUpdate = true;
+        vectorTextTexture.magFilter = THREE.NearestFilter;
+        vectorTextTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        vectorTextTexture.generateMipmaps = true;
+        vectorTextTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-        // Apply material to cube
-        const textMaterial = new THREE.MeshBasicMaterial({
-            map: currentTextTexture,
+        // Apply material to cube front face
+        const viewportSvgMaterial = new THREE.MeshBasicMaterial({
+            map: vectorTextTexture,
             transparent: true,
             alphaTest: 0.01,
             side: THREE.FrontSide
         });
 
-        materials[4] = textMaterial;
+        materials[4] = viewportSvgMaterial;
         cube.material = materials;
-        console.log('Text texture applied to cube front face via WrapviewSVGLayer');
+        console.log('SVG viewport texture applied to cube');
+
     } catch (error) {
-        console.error('Error applying text texture:', error);
+        console.error('Error applying SVG viewport texture:', error);
     }
 };
 
-// Setup editor change listener for real-time texture updates
-if (svgEditor) {
-    svgEditor.setOnChange((dataUrl) => {
-        if (dataUrl) {
-            applyTextTextureToCube(dataUrl);
+// Add event listener to apply viewport SVG texture on demand
+if (document.getElementById('apply-arch-effect-btn')) {
+    document.getElementById('apply-arch-effect-btn').addEventListener('click', () => {
+        if (vectorText) {
+            vectorText.addArchEffect();
+            setTimeout(() => {
+                applyViewportSvgTextureToMesh();
+            }, 500);
         }
     });
-
-    const updateText = () => {
-        if (!quickTextInput) return;
-        svgEditor.setText(quickTextInput.value || '');
-    };
-
-    const updateFillColor = () => {
-        if (!fillColorInput) return;
-        svgEditor.setFillColor(fillColorInput.value || '#000000');
-    };
-
-    const updateFontFamily = () => {
-        if (!fontFamilySelect) return;
-        svgEditor.setFontFamily(fontFamilySelect.value || 'Impact');
-    };
-
-    const updateFontSize = () => {
-        if (!fontSizeSlider) return;
-        const size = parseInt(fontSizeSlider.value) || 60;
-        if (fontSizeValue) fontSizeValue.textContent = size;
-        svgEditor.setFontSize(size);
-    };
-
-    const updateOutline = () => {
-        const width = parseFloat(outlineWidthInput?.value) || 0;
-        const color = outlineColorInput?.value || '#000000';
-        svgEditor.setOutline({ enabled: outlineEnabled, color, width });
-    };
-
-    const toggleOutline = () => {
-        outlineEnabled = !outlineEnabled;
-        if (toggleOutlineButton) {
-            toggleOutlineButton.dataset.enabled = outlineEnabled.toString();
-            toggleOutlineButton.textContent = outlineEnabled ? 'Outline On' : 'Outline Off';
-        }
-        updateOutline();
-    };
-
-    const setEffect = (effect) => {
-        if (!effect) return;
-        svgEditor.setEffect(effect);
-        effectButtons.forEach(btn => {
-            if (btn.dataset.effect === effect) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    };
-
-    const updateCharSpacing = () => {
-        const spacing = parseInt(charSpacingSlider.value) || 0;
-        charSpacingValue.textContent = spacing;
-        if (svgEditor) {
-            svgEditor.setCharSpacing(spacing);
-        }
-    };
-
-    const updateShapeIntensity = () => {
-        const intensity = parseInt(shapeIntensitySlider.value) || 100;
-        shapeIntensityValue.textContent = intensity;
-        if (svgEditor) {
-            svgEditor.setShapeIntensity(intensity);
-        }
-    };
-
-    if (quickTextInput) {
-        quickTextInput.addEventListener('input', updateText);
-    }
-
-    if (fillColorInput) {
-        fillColorInput.addEventListener('input', updateFillColor);
-    }
-
-    if (fontFamilySelect) {
-        fontFamilySelect.addEventListener('change', updateFontFamily);
-    }
-
-    if (fontSizeSlider) {
-        fontSizeSlider.addEventListener('input', updateFontSize);
-    }
-
-    if (outlineColorInput) {
-        outlineColorInput.addEventListener('input', updateOutline);
-    }
-
-    if (outlineWidthInput) {
-        outlineWidthInput.addEventListener('input', updateOutline);
-    }
-
-    if (toggleOutlineButton) {
-        toggleOutlineButton.addEventListener('click', toggleOutline);
-    }
-
-    if (effectButtons.length) {
-        effectButtons.forEach(btn => {
-            btn.addEventListener('click', () => setEffect(btn.dataset.effect));
-        });
-    }
-
-    charSpacingSlider.addEventListener('input', updateCharSpacing);
-    shapeIntensitySlider.addEventListener('input', updateShapeIntensity);
-
-    // Seed editor with initial UI values
-    updateText();
-    updateFillColor();
-    updateFontFamily();
-    updateFontSize();
-    updateOutline();
-    updateCharSpacing();
-    updateShapeIntensity();
-    const initialEffect = Array.from(effectButtons).find(b => b.classList.contains('active'))?.dataset.effect || 'none';
-    setEffect(initialEffect);
-}
-
-// Initialize text texture on startup
-if (svgEditor) {
-    setTimeout(() => {
-        const initialDataUrl = svgEditor.getDataURL();
-        if (initialDataUrl) {
-            applyTextTextureToCube(initialDataUrl);
-            console.log('Initial text texture loaded via WrapviewSVGLayer');
-        }
-    }, 500);
 }
 
 function animate() {
