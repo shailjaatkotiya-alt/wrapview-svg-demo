@@ -234,7 +234,7 @@ materials.add("99_ShadowPanel", shadow);
 const item = new WrapviewObject({
     transform: {
         rotation: {
-            y: -Math.PI,
+            y: Math.PI,
         },
         position: {
             y: 0.16,
@@ -251,7 +251,7 @@ item.load("/3001C_SMALL/3001C_SMALL_LOD0.glb").then(() => {
     wrapviewInstance.addObject(item);
 });
 
-camera.position.set(0, 2, 8);
+camera.position.set(0, 0, 2);
 camera.lookAt(0, 0, 0);
 
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
@@ -284,8 +284,6 @@ const debounce = (func, delay) => {
 };
 
 const currentPanel = function () {
-    // Get the material from the materials set using the proper getter method
-    // A "panel" in this context is a WrapviewTexturedMaterial that can have text layers
     const panel = materials.get("FRONT_BODY");
     if (!panel) {
         console.error("FRONT_BODY panel not found in materials");
@@ -293,6 +291,8 @@ const currentPanel = function () {
     }
     return panel;
 }
+
+let currentSvgLayer = null;
 
 const applyTextTextureToPanels = async (dataUrl) => {
     if (!dataUrl) {
@@ -307,51 +307,50 @@ const applyTextTextureToPanels = async (dataUrl) => {
         return;
     }
 
-    // for (const panelName of colorTargets) {
-        const panel = currentPanel();
-        if (!panel) {
-            return;
+    const panel = currentPanel();
+    if (!panel) {
+        return;
+    }
+    if (!panel.texture()) {
+        console.error('Cannot add SVG layer: texture not initialized');
+        return;
+    }
+
+    const size = panel.settings.build?.parameters?.size || 2048;
+    
+    if (!currentSvgLayer) {
+        currentSvgLayer = new WrapviewSVGLayer(WrapviewUtils.guid(), {
+            size: { width: size, height: size },
+            pivot: { x: 0.5, y: 0.5 },
+            position: { x: size / 2, y: size / 2 },
+            angle: 0,
+        });
+    }
+
+    const layer = currentSvgLayer;
+    const texture = panel.texture();
+
+    await texture.beginEditing();
+    try {
+        const layers = texture.layers();
+        let layerIndex = layers.findIndex((l) => l.id === layer.id);
+        if (layerIndex === -1) {
+            layerIndex = texture.addLayer(layer);
         }
-        if (!panel.texture()) {
-            console.error(`Cannot add SVG layer: texture not initialized for ${panelName}`);
-            return;
-        }
 
-        const size = panel.settings.build?.parameters?.size || 2048;
-        // if (!svgLayersByPanel[panelName]) {
-        const svgLayersByPanel = new WrapviewSVGLayer(WrapviewUtils.guid(), {
-                size: { width: size, height: size },
-                pivot: { x: 0.5, y: 0.5 },
-                position: { x: size / 2, y: size / 2 },
-                angle: 0,
-            });
-        // }
+        await layer.load({
+            svgData: dataUrl,
+        }, panel);
 
-        const layer = svgLayersByPanel;
-        const texture = panel.texture();
+        texture.editLayer(layerIndex);
+        texture.render();
+    } catch (error) {
+        console.error('Error loading text layer:', error);
+    } finally {
+        await texture.endEditing();
+    }
 
-        await texture.beginEditing();
-        try {
-            const layers = texture.layers();
-            let layerIndex = layers.findIndex((l) => l.id === layer.id);
-            if (layerIndex === -1) {
-                layerIndex = texture.addLayer(layer);
-            }
-
-            await layer.load({
-                svgData: dataUrl,
-            }, panel);
-
-            texture.editLayer(layerIndex);
-            texture.render();
-        } catch (error) {
-            console.error(`Error loading text layer for ${panelName}:`, error);
-        } finally {
-            await texture.endEditing();
-        }
-    // }
-
-    console.log('Text texture applied to garment panels');
+    console.log('Text texture applied to garment panel');
 };
 
 // Debounced version with 300ms delay

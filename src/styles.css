@@ -21,14 +21,6 @@ body {
     flex-wrap: nowrap;
 }
 
-#editor-panel {
-    flex: 1;
-    overflow-y: scroll;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-}
-
 #controls-panel {
     display: flex;
     flex-direction: column;
