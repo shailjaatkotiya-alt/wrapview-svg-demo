@@ -1075,6 +1075,7 @@ class WrapviewSVGLayer extends WrapviewLayer {
         this._canvas = null;
         this._image = null;
         this._loaded = false;
+        this._dataUrl = null;
     }
 
     name() {
@@ -1095,25 +1096,31 @@ class WrapviewSVGLayer extends WrapviewLayer {
      * @param {Object} data - Contains svgData (PNG data URL)
      * @returns {Promise} Resolves when image is loaded
      */
-    load(data) {
+    load(data, material) {
         return new Promise((resolve, reject) => {
-            if (!data.svgData) {
+            if (!data || !data.svgData) {
                 reject(new Error('No svgData provided'));
                 return;
             }
 
+            this._dataUrl = data.svgData;
             const img = new Image();
+            img.crossOrigin = 'Anonymous';
             img.onload = () => {
-                // Create canvas from image
-                this._canvas = document.createElement('canvas');
+                if (!this._canvas) {
+                    this._canvas = document.createElement('canvas');
+                }
                 this._canvas.width = this.settings.size.width;
                 this._canvas.height = this.settings.size.height;
+
                 const ctx = this._canvas.getContext('2d');
+                ctx.clearRect(0, 0, this.settings.size.width, this.settings.size.height);
                 ctx.drawImage(img, 0, 0, this.settings.size.width, this.settings.size.height);
-                
+
                 this._image = img;
                 this._loaded = true;
-                resolve();
+                this.setNeedsUpdate();
+                resolve(this._canvas);
             };
             img.onerror = () => {
                 reject(new Error('Failed to load SVG data URL'));
@@ -1135,8 +1142,8 @@ class WrapviewSVGLayer extends WrapviewLayer {
      * @param {string} dataUrl - PNG data URL to apply as texture
      */
     updateFromDataUrl(dataUrl) {
-        if (!dataUrl) return;
-        
+        if (!dataUrl) return Promise.resolve();
+
         return this.load({ svgData: dataUrl });
     }
 
@@ -1151,7 +1158,7 @@ class WrapviewSVGLayer extends WrapviewLayer {
         context.translate(this.settings.position.x, this.settings.position.y);
         context.rotate(this.settings.angle);
         context.drawImage(
-            this._image,
+            this._canvas || this._image,
             -this.settings.size.width * this.settings.pivot.x,
             -this.settings.size.height * this.settings.pivot.y,
             this.settings.size.width,
@@ -1169,6 +1176,9 @@ class WrapviewSVGLayer extends WrapviewLayer {
     getData() {
         return {
             type: 'WrapviewSVGLayer',
+            data: {
+                svgData: this._dataUrl
+            },
             settings: {
                 size: this.settings.size,
                 pivot: this.settings.pivot,

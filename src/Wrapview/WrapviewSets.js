@@ -1,5 +1,5 @@
-import { WrapviewVariable } from "./WrapviewVariable";
-import { WrapviewFont } from "./WrapviewFont";
+import { WrapviewVariable } from "./WrapviewVariable.js";
+import { WrapviewFont } from "./WrapviewFont.js";
 
 class WrapviewSet {
     constructor(t) {

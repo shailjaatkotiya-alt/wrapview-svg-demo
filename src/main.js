@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
-import { WrapviewVectorText } from './Wrapview/WrapviewVectorText.js';
+import { WrapviewMaterialSet } from './Wrapview/WrapviewSets.js';
+import { WrapviewShadowMaterial, WrapviewTexturedMaterial, WrapviewStitchMaterial } from './Wrapview/WrapviewMaterial.js';
+import { WrapviewParameter } from './Wrapview/WrapviewParameter.js';
+import { WrapviewObject } from './Wrapview/WrapviewObject.js';
+import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewUtils } from './Wrapview/WrapviewUtils.js';
 
 WrapviewSettings.init();
 
@@ -30,19 +35,221 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 controls.update();
 
-// Create 3D geometry and materials
-const geometry = new THREE.BoxGeometry();
-const materials = [
-    new THREE.MeshBasicMaterial({ color: 0xff0000 }), // +X (front) - SVG texture
-    new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-];
+wrapviewInstance.updateOffsets();
+const promises = [];
 
-const cube = new THREE.Mesh(geometry, materials);
-scene.add(cube);
+var materials = new WrapviewMaterialSet();
+const shadow = new WrapviewShadowMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            alpha:
+                "https://combibmark.s3.amazonaws.com/models/shadow_ultra_light_inverted.png",
+        },
+    }
+);
+
+var color = new WrapviewParameter(null, "textColor");
+color.set({
+    type: "fixed",
+    value: "#2b2b2b",
+    descriptor: "Black",
+});
+
+const collar = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1005.png",
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1005.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1005.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1005.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1005.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1005.png",
+        },
+        build: {
+            parameters: {
+                base: true,
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const backNeckTape = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1006.png",
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1006.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1006.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1006.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1006.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1006.png",
+        },
+        build: {
+            parameters: {
+                base: true,
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const leftArmSleeve = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1003.png",
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1003.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1003.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1003.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1003.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1003.png",
+        },
+        build: {
+            parameters: {
+                base: true,
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const rightArmSleeve = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1004.png",
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1004.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1004.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1004.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1004.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1004.png",
+        },
+        build: {
+            parameters: {
+                base: true, // Enable base layer building for text editing
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const frontBody = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_common.png", // Base layer for text editing
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1001.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1001.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1001.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1001.png",
+        },
+        build: {
+            parameters: {
+                base: true, // Enable base layer building for text editing
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const backBody = new WrapviewTexturedMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            base: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
+            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
+            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1002.png",
+            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1002.png",
+            // roughness:
+            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1002.png",
+            metalness:
+                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1002.png",
+        },
+        build: {
+            parameters: {
+                base: true,
+                size: 2048,
+                layers: [],
+                color: color,
+            },
+        },
+    }
+);
+
+const stitches = new WrapviewStitchMaterial(
+    wrapviewInstance,
+    {
+        resources: {
+            diffuse: "/3001C_SMALL/textures/Basic_Offset_2193.png",
+        },
+    }
+);
+
+promises.push(
+    collar.init(),
+    backNeckTape.init(),
+    leftArmSleeve.init(),
+    rightArmSleeve.init(),
+    frontBody.init(),
+    backBody.init(),
+    shadow.init(),
+    stitches.init()
+);
+
+const materialsReady = Promise.all(promises);
+
+materials.add("COLLAR", collar);
+materials.add("BACK_NECK_TAPE", backNeckTape);
+materials.add("LEFT_ARM_SLEEVE", leftArmSleeve);
+materials.add("RIGHT_ARM_SLEEVE", rightArmSleeve);
+materials.add("FRONT_BODY", frontBody);
+materials.add("BACK_BODY", backBody);
+materials.add("EXT_Stitches", stitches);
+materials.add("99_ShadowPanel", shadow);
+
+const item = new WrapviewObject({
+    transform: {
+        rotation: {
+            y: -Math.PI,
+        },
+        position: {
+            y: 0.16,
+        },
+        scale: {
+            x: 0.8,
+            y: 0.8,
+            z: 0.8,
+        },
+    },
+});
+item.setMaterials(materials);
+item.load("/3001C_SMALL/3001C_SMALL_LOD0.glb").then(() => {
+    wrapviewInstance.addObject(item);
+});
 
 camera.position.set(0, 2, 8);
 camera.lookAt(0, 0, 0);
@@ -56,173 +263,196 @@ dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-let vectorText = new WrapviewVectorText('vectorText', {});
-let currentEffect = 'none';
-if (vectorText) {
-    vectorText.addNoneEffect();
-    currentEffect = 'none';
-    setTimeout(() => {
-        applyViewportSvgTextureToMesh();
-    }, 500);
+const svgEditor = wrapviewInstance.svgEditor();
+const svgLayersByPanel = {};
+const colorTargets = [
+    'COLLAR',
+    'BACK_NECK_TAPE',
+    'LEFT_ARM_SLEEVE',
+    'RIGHT_ARM_SLEEVE',
+    'FRONT_BODY',
+    'BACK_BODY'
+];
+
+// Debounce utility to prevent excessive texture updates
+let debounceTimer = null;
+const debounce = (func, delay) => {
+    return (...args) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => func(...args), delay);
+    };
+};
+
+const currentPanel = function () {
+    // Get the material from the materials set using the proper getter method
+    // A "panel" in this context is a WrapviewTexturedMaterial that can have text layers
+    const panel = materials.get("FRONT_BODY");
+    if (!panel) {
+        console.error("FRONT_BODY panel not found in materials");
+        return null;
+    }
+    return panel;
 }
 
-let vectorTextTexture = null;
+const applyTextTextureToPanels = async (dataUrl) => {
+    if (!dataUrl) {
+        console.warn('No data URL provided for texture');
+        return;
+    }
 
-const applyViewportSvgTextureToMesh = async () => {
     try {
-        if (!vectorText) {
-            console.error('Vector text not initialized');
-            return;
-        }
-
-        const canvas = await vectorText.renderSvgViewportToCanvas();
-
-        if (!canvas) {
-            console.error('Failed to get canvas from viewport SVG');
-            return;
-        }
-
-        // Dispose old texture if it exists
-        if (vectorTextTexture) {
-            vectorTextTexture.dispose();
-        }
-
-        // Create texture from canvas
-        vectorTextTexture = new THREE.CanvasTexture(canvas);
-        vectorTextTexture.needsUpdate = true;
-        vectorTextTexture.magFilter = THREE.NearestFilter;
-        vectorTextTexture.minFilter = THREE.LinearMipmapLinearFilter;
-        vectorTextTexture.generateMipmaps = true;
-        vectorTextTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
-        // Apply material to cube front face
-        const viewportSvgMaterial = new THREE.MeshBasicMaterial({
-            map: vectorTextTexture,
-            transparent: true,
-            alphaTest: 0.01,
-            side: THREE.FrontSide
-        });
-
-        materials[4] = viewportSvgMaterial;
-        cube.material = materials;
-        console.log('SVG viewport texture applied to cube');
-
+        await materialsReady;
     } catch (error) {
-        console.error('Error applying SVG viewport texture:', error);
+        console.error('Materials failed to initialize', error);
+        return;
+    }
+
+    // for (const panelName of colorTargets) {
+        const panel = currentPanel();
+        if (!panel) {
+            return;
+        }
+        if (!panel.texture()) {
+            console.error(`Cannot add SVG layer: texture not initialized for ${panelName}`);
+            return;
+        }
+
+        const size = panel.settings.build?.parameters?.size || 2048;
+        // if (!svgLayersByPanel[panelName]) {
+        const svgLayersByPanel = new WrapviewSVGLayer(WrapviewUtils.guid(), {
+                size: { width: size, height: size },
+                pivot: { x: 0.5, y: 0.5 },
+                position: { x: size / 2, y: size / 2 },
+                angle: 0,
+            });
+        // }
+
+        const layer = svgLayersByPanel;
+        const texture = panel.texture();
+
+        await texture.beginEditing();
+        try {
+            const layers = texture.layers();
+            let layerIndex = layers.findIndex((l) => l.id === layer.id);
+            if (layerIndex === -1) {
+                layerIndex = texture.addLayer(layer);
+            }
+
+            await layer.load({
+                svgData: dataUrl,
+            }, panel);
+
+            texture.editLayer(layerIndex);
+            texture.render();
+        } catch (error) {
+            console.error(`Error loading text layer for ${panelName}:`, error);
+        } finally {
+            await texture.endEditing();
+        }
+    // }
+
+    console.log('Text texture applied to garment panels');
+};
+
+// Debounced version with 300ms delay
+const debouncedApplyTexture = debounce(applyTextTextureToPanels, 300);
+
+const setupSvgEditorUi = () => {
+    svgEditor.attachTo('svg-preview-container');
+    svgEditor.setOnChange((dataUrl) => {
+        debouncedApplyTexture(dataUrl);
+    });
+
+    const textInput = document.getElementById('quick-text-input');
+    if (textInput) {
+        svgEditor.setText(textInput.value || '');
+        textInput.addEventListener('input', (e) => svgEditor.setText(e.target.value || ''));
+    }
+
+    const fontSizeSlider = document.getElementById('font-size-slider');
+    const fontSizeValue = document.getElementById('font-size-value');
+    if (fontSizeSlider) {
+        const updateFontSize = (val) => {
+            const size = parseInt(val, 10);
+            if (Number.isFinite(size)) {
+                svgEditor.setFontSize(size);
+                if (fontSizeValue) fontSizeValue.textContent = String(size);
+            }
+        };
+        updateFontSize(fontSizeSlider.value);
+        fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
+    }
+
+    const fillColorInput = document.getElementById('fill-color-input');
+    if (fillColorInput) {
+        svgEditor.setFillColor(fillColorInput.value);
+        fillColorInput.addEventListener('input', (e) => svgEditor.setFillColor(e.target.value));
+    }
+
+    const outlineColorInput = document.getElementById('outline-color-input');
+    if (outlineColorInput) {
+        svgEditor.setOutline({ color: outlineColorInput.value });
+        outlineColorInput.addEventListener('input', (e) => svgEditor.setOutline({ color: e.target.value }));
+    }
+
+    const outlineWidthInput = document.getElementById('outline-width-input');
+    if (outlineWidthInput) {
+        const updateOutlineWidth = (val) => {
+            const width = parseInt(val, 10);
+            if (Number.isFinite(width)) {
+                svgEditor.setOutline({ width });
+            }
+        };
+        updateOutlineWidth(outlineWidthInput.value);
+        outlineWidthInput.addEventListener('input', (e) => updateOutlineWidth(e.target.value));
+    }
+
+    const toggleOutlineBtn = document.getElementById('toggle-outline-btn');
+    if (toggleOutlineBtn) {
+        const setBtnState = (enabled) => {
+            toggleOutlineBtn.dataset.enabled = String(!!enabled);
+            toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
+        };
+        let enabled = toggleOutlineBtn.dataset.enabled === 'true';
+        setBtnState(enabled);
+        svgEditor.setOutline({ enabled });
+
+        toggleOutlineBtn.addEventListener('click', () => {
+            enabled = !enabled;
+            setBtnState(enabled);
+            svgEditor.setOutline({ enabled });
+        });
+    }
+
+    const applyEffect = (effect) => svgEditor.setEffect(effect);
+
+    const applyArchBtn = document.getElementById('apply-arch-effect-btn');
+    if (applyArchBtn) {
+        applyArchBtn.addEventListener('click', () => applyEffect('arch'));
+    }
+
+    const applyNoneBtn = document.getElementById('apply-none-effect-btn');
+    if (applyNoneBtn) {
+        applyNoneBtn.addEventListener('click', () => applyEffect('none'));
+    }
+
+    const applyFlagBtn = document.getElementById('apply-flag-effect-btn');
+    if (applyFlagBtn) {
+        applyFlagBtn.addEventListener('click', () => applyEffect('flag'));
+    }
+
+    const fontSelect = document.getElementById('vector-font-select');
+    if (fontSelect) {
+        svgEditor.setFontFamily(fontSelect.value);
+        fontSelect.addEventListener('change', (e) => svgEditor.setFontFamily(e.target.value));
     }
 };
 
-if (document.getElementById('apply-arch-effect-btn')) {
-    document.getElementById('apply-arch-effect-btn').addEventListener('click', () => {
-        if (vectorText) {
-            currentEffect = 'arch';
-            renderEffectAndApplyTexture();
-        }
-    });
-}
-
-if (document.getElementById('apply-none-effect-btn')) {
-    document.getElementById('apply-none-effect-btn').addEventListener('click', () => {
-        if (vectorText) {
-            currentEffect = 'none';
-            renderEffectAndApplyTexture();
-        }
-    });
-}
-
-if (document.getElementById('apply-flag-effect-btn')) {
-    document.getElementById('apply-flag-effect-btn').addEventListener('click', () => {
-        if (vectorText) {
-            currentEffect = 'flag';
-            renderEffectAndApplyTexture();
-        }
-    });
-}
-
-// Helper to rerender text with current effect and update the texture
-const renderEffectAndApplyTexture = () => {
-    if (!vectorText) return;
-    if (currentEffect === 'arch') {
-        vectorText.addArchEffect();
-    } else if (currentEffect === 'flag') {
-        vectorText.addFlagEffect();
-    } else {
-        vectorText.addNoneEffect();
-    }
-    setTimeout(() => {
-        applyViewportSvgTextureToMesh();
-    }, 500);
-};
-
-// UI bindings for text editing and styling
-const textInput = document.getElementById('quick-text-input');
-if (textInput) {
-    textInput.addEventListener('input', (e) => {
-        vectorText.setText(e.target.value || '');
-        renderEffectAndApplyTexture();
-    });
-}
-
-const fontSizeSlider = document.getElementById('font-size-slider');
-const fontSizeValue = document.getElementById('font-size-value');
-if (fontSizeSlider) {
-    const updateFontSize = (val) => {
-        const size = parseInt(val, 10);
-        if (Number.isFinite(size)) {
-            vectorText.setFontSize(size);
-            if (fontSizeValue) fontSizeValue.textContent = String(size);
-            renderEffectAndApplyTexture();
-        }
-    };
-    // initialize display
-    updateFontSize(fontSizeSlider.value);
-    fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
-}
-
-const fillColorInput = document.getElementById('fill-color-input');
-if (fillColorInput) {
-    fillColorInput.addEventListener('input', (e) => {
-        const color = e.target.value;
-        vectorText.setFontColor(color);
-        renderEffectAndApplyTexture();
-    });
-}
-
-const outlineColorInput = document.getElementById('outline-color-input');
-if (outlineColorInput) {
-    outlineColorInput.addEventListener('input', (e) => {
-        const color = e.target.value;
-        vectorText.setOutlineColor(color);
-        renderEffectAndApplyTexture();
-    });
-}
-
-const outlineWidthInput = document.getElementById('outline-width-input');
-if (outlineWidthInput) {
-    outlineWidthInput.addEventListener('input', (e) => {
-        const thickness = parseInt(e.target.value, 10);
-        if (Number.isFinite(thickness)) {
-            vectorText.setOutlineThickness(thickness);
-            renderEffectAndApplyTexture();
-        }
-    });
-}
-
-const toggleOutlineBtn = document.getElementById('toggle-outline-btn');
-if (toggleOutlineBtn) {
-    // initialize button state from vectorText
-    const setBtnState = (enabled) => {
-        toggleOutlineBtn.dataset.enabled = String(!!enabled);
-        toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
-    };
-    setBtnState(vectorText.getOutlineEnabled());
-    toggleOutlineBtn.addEventListener('click', () => {
-        const isEnabled = vectorText.getOutlineEnabled();
-        vectorText.setOutlineEnabled(!isEnabled);
-        setBtnState(!isEnabled);
-        renderEffectAndApplyTexture();
-    });
-}
+materialsReady.then(() => {
+    setupSvgEditorUi();
+}).catch((error) => {
+    console.error('Failed to initialize materials:', error);
+});
 
 function animate() {
     requestAnimationFrame(animate);
