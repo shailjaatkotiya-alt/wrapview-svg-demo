@@ -11,7 +11,7 @@ class WrapviewVectorText {
         this._text_defaults = {
             fontFamily: 'ABeeZee',
             fontSize: 16,
-            fontColor: '#000000',
+            fontColor: '#ffffff',
             outlineEnabled: false,
             outlineColor: '#000000',
             outlineThickness: 2
@@ -87,7 +87,7 @@ class WrapviewVectorText {
                 return;
             }
 
-            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 100, false, false);
+            const textModel = new makerjs.models.Text(font, this.getText(), 100, false, false);
             const textSvg = makerjs.exporter.toSVG(textModel, {
                 fill: this._text_defaults.fontColor,
                 stroke: this._text_defaults.outlineColor,

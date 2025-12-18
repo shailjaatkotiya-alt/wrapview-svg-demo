@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WrapviewVectorText } from './Wrapview/WrapviewVectorText.js';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
@@ -234,7 +235,7 @@ materials.add("99_ShadowPanel", shadow);
 const item = new WrapviewObject({
     transform: {
         rotation: {
-            y: Math.PI,
+            y: 0,
         },
         position: {
             y: 0.16,
@@ -262,17 +263,6 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(5, 10, 7.5);
 dirLight.castShadow = true;
 scene.add(dirLight);
-
-const svgEditor = wrapviewInstance.svgEditor();
-const svgLayersByPanel = {};
-const colorTargets = [
-    'COLLAR',
-    'BACK_NECK_TAPE',
-    'LEFT_ARM_SLEEVE',
-    'RIGHT_ARM_SLEEVE',
-    'FRONT_BODY',
-    'BACK_BODY'
-];
 
 // Debounce utility to prevent excessive texture updates
 let debounceTimer = null;
@@ -317,7 +307,7 @@ const applyTextTextureToPanels = async (dataUrl) => {
     }
 
     const size = panel.settings.build?.parameters?.size || 2048;
-    
+
     if (!currentSvgLayer) {
         currentSvgLayer = new WrapviewSVGLayer(WrapviewUtils.guid(), {
             size: { width: size, height: size },
@@ -356,16 +346,49 @@ const applyTextTextureToPanels = async (dataUrl) => {
 // Debounced version with 300ms delay
 const debouncedApplyTexture = debounce(applyTextTextureToPanels, 300);
 
-const setupSvgEditorUi = () => {
-    svgEditor.attachTo('svg-preview-container');
-    svgEditor.setOnChange((dataUrl) => {
-        debouncedApplyTexture(dataUrl);
-    });
+// WrapviewVectorText setup
+let vectorText = new WrapviewVectorText('vectorText', {});
+let currentEffect = 'none';
 
+const updateGarmentTexture = async () => {
+    try {
+        if (!vectorText) return;
+        const canvas = await vectorText.renderSvgViewportToCanvas();
+        if (!canvas) {
+            console.error('Failed to get canvas from viewport SVG');
+            return;
+        }
+
+        const dataUrl = canvas.toDataURL("image/png");
+        debouncedApplyTexture(dataUrl);
+    } catch (error) {
+        console.error('Error applying SVG viewport texture:', error);
+    }
+};
+
+const renderEffectAndApplyTexture = () => {
+    if (!vectorText) return;
+    if (currentEffect === 'arch') {
+        vectorText.addArchEffect();
+    } else if (currentEffect === 'flag') {
+        vectorText.addFlagEffect();
+    } else {
+        vectorText.addNoneEffect();
+    }
+    setTimeout(() => {
+        updateGarmentTexture();
+    }, 500);
+};
+
+const setupVectorTextUi = () => {
     const textInput = document.getElementById('quick-text-input');
     if (textInput) {
-        svgEditor.setText(textInput.value || '');
-        textInput.addEventListener('input', (e) => svgEditor.setText(e.target.value || ''));
+        // Initialize inputs
+        textInput.value = vectorText.getText();
+        textInput.addEventListener('input', (e) => {
+            vectorText.setText(e.target.value || '');
+            renderEffectAndApplyTexture();
+        });
     }
 
     const fontSizeSlider = document.getElementById('font-size-slider');
@@ -374,36 +397,43 @@ const setupSvgEditorUi = () => {
         const updateFontSize = (val) => {
             const size = parseInt(val, 10);
             if (Number.isFinite(size)) {
-                svgEditor.setFontSize(size);
+                vectorText.setFontSize(size);
                 if (fontSizeValue) fontSizeValue.textContent = String(size);
+                renderEffectAndApplyTexture();
             }
         };
+        // initialize display
         updateFontSize(fontSizeSlider.value);
         fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
     }
 
     const fillColorInput = document.getElementById('fill-color-input');
     if (fillColorInput) {
-        svgEditor.setFillColor(fillColorInput.value);
-        fillColorInput.addEventListener('input', (e) => svgEditor.setFillColor(e.target.value));
+        fillColorInput.addEventListener('input', (e) => {
+            const color = e.target.value;
+            vectorText.setFontColor(color);
+            renderEffectAndApplyTexture();
+        });
     }
 
     const outlineColorInput = document.getElementById('outline-color-input');
     if (outlineColorInput) {
-        svgEditor.setOutline({ color: outlineColorInput.value });
-        outlineColorInput.addEventListener('input', (e) => svgEditor.setOutline({ color: e.target.value }));
+        outlineColorInput.addEventListener('input', (e) => {
+            const color = e.target.value;
+            vectorText.setOutlineColor(color);
+            renderEffectAndApplyTexture();
+        });
     }
 
     const outlineWidthInput = document.getElementById('outline-width-input');
     if (outlineWidthInput) {
-        const updateOutlineWidth = (val) => {
-            const width = parseInt(val, 10);
-            if (Number.isFinite(width)) {
-                svgEditor.setOutline({ width });
+        outlineWidthInput.addEventListener('input', (e) => {
+            const thickness = parseInt(e.target.value, 10);
+            if (Number.isFinite(thickness)) {
+                vectorText.setOutlineThickness(thickness);
+                renderEffectAndApplyTexture();
             }
-        };
-        updateOutlineWidth(outlineWidthInput.value);
-        outlineWidthInput.addEventListener('input', (e) => updateOutlineWidth(e.target.value));
+        });
     }
 
     const toggleOutlineBtn = document.getElementById('toggle-outline-btn');
@@ -412,43 +442,50 @@ const setupSvgEditorUi = () => {
             toggleOutlineBtn.dataset.enabled = String(!!enabled);
             toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
         };
-        let enabled = toggleOutlineBtn.dataset.enabled === 'true';
-        setBtnState(enabled);
-        svgEditor.setOutline({ enabled });
-
+        setBtnState(vectorText.getOutlineEnabled());
         toggleOutlineBtn.addEventListener('click', () => {
-            enabled = !enabled;
-            setBtnState(enabled);
-            svgEditor.setOutline({ enabled });
+            const isEnabled = vectorText.getOutlineEnabled();
+            vectorText.setOutlineEnabled(!isEnabled);
+            setBtnState(!isEnabled);
+            renderEffectAndApplyTexture();
         });
     }
 
-    const applyEffect = (effect) => svgEditor.setEffect(effect);
-
     const applyArchBtn = document.getElementById('apply-arch-effect-btn');
     if (applyArchBtn) {
-        applyArchBtn.addEventListener('click', () => applyEffect('arch'));
+        applyArchBtn.addEventListener('click', () => {
+            currentEffect = 'arch';
+            renderEffectAndApplyTexture();
+        });
     }
 
     const applyNoneBtn = document.getElementById('apply-none-effect-btn');
     if (applyNoneBtn) {
-        applyNoneBtn.addEventListener('click', () => applyEffect('none'));
+        applyNoneBtn.addEventListener('click', () => {
+            currentEffect = 'none';
+            renderEffectAndApplyTexture();
+        });
     }
 
     const applyFlagBtn = document.getElementById('apply-flag-effect-btn');
     if (applyFlagBtn) {
-        applyFlagBtn.addEventListener('click', () => applyEffect('flag'));
-    }
-
-    const fontSelect = document.getElementById('vector-font-select');
-    if (fontSelect) {
-        svgEditor.setFontFamily(fontSelect.value);
-        fontSelect.addEventListener('change', (e) => svgEditor.setFontFamily(e.target.value));
+        applyFlagBtn.addEventListener('click', () => {
+            currentEffect = 'flag';
+            renderEffectAndApplyTexture();
+        });
     }
 };
 
 materialsReady.then(() => {
-    setupSvgEditorUi();
+    // Initialize default effect and apply
+    if (vectorText) {
+        vectorText.addNoneEffect();
+        currentEffect = 'none';
+        setTimeout(() => {
+            updateGarmentTexture();
+        }, 500);
+    }
+    setupVectorTextUi();
 }).catch((error) => {
     console.error('Failed to initialize materials:', error);
 });
