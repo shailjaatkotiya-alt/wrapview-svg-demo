@@ -21,7 +21,7 @@ class WrapviewVectorText {
         this._canvas = null;
         this._onUpdate = null;
         this._root = null;
-        this._path = null;
+        this._path = '';
         this.svgElement = null;
 
         // Ensure SVG container exists
@@ -64,21 +64,29 @@ class WrapviewVectorText {
         this._root = SVG().size(this.SVG_SIZE, this.SVG_SIZE).id('viewportSvg');
         this._svgContainer.innerHTML = '';
         this._root.addTo(this._svgContainer);
-        this._path = this._root.path('M0,100 C50,50 560,50 560,100').attr({ stroke: 'none', fill: 'none' });
         this.svgElement = this._root.node;
     }
 
-    getY(x, y) {
+    getY(x, y, h, w, effectType) {
         if (!this._path || !Number.isFinite(x) || !Number.isFinite(y)) return y;
         const pathPoint = this._path.pointAt(x);
         if (!pathPoint || !Number.isFinite(pathPoint.y)) return y;
 
-        let normalizedY = (y - (600 / 2)) / (600 / 2); //height/2
+        if (effectType === 'bulge' || effectType === 'pinch') {
+            const normalizedY = (y - (h / 2)) / (h / 2);
+            // console.log(normalizedY);
+            if (effectType === 'bulge') {
+                return (y + normalizedY * pathPoint.y) - h;
+            } else {
+                // pinch
+                return (y - normalizedY * pathPoint.y) - h;
+            }
+        }
 
         return y + pathPoint.y - this.BASELINE_OFFSET;
     }
 
-    addNoneEffect() {
+    _renderEffect(effectType, pathCreator) {
         this._initializeViewportSvg();
 
         opentype.load(this.FONT_URL, (err, font) => {
@@ -87,7 +95,7 @@ class WrapviewVectorText {
                 return;
             }
 
-            const textModel = new makerjs.models.Text(font, this.getText(), 100, false, false);
+            const textModel = new makerjs.models.Text(font, this.getText(), this.fontSize, false, false);
             const textSvg = makerjs.exporter.toSVG(textModel, {
                 fill: this._text_defaults.fontColor,
                 stroke: this._text_defaults.outlineColor,
@@ -105,97 +113,50 @@ class WrapviewVectorText {
                 group.id('svgGroup');
             }
 
-            draw.addTo(this._svgContainer);
+            const groupHeight = group ? group.bbox().height : 0;
+            const groupWidth = group ? group.bbox().width : 0;
+            // console.log('Group dimensions', groupWidth, groupHeight);
+
             this._root = draw;
             this.svgElement = draw.node;
+            this._path = '';
 
-            const path = draw.path('M0,100 C50,50 560,50 560,100').attr({ stroke: 'none', fill: 'none' });
-            this._path = path;
+            if (effectType !== 'none' && pathCreator) {
+                const path = pathCreator(draw);
+                this._path = path;
+                const warp = new Warp(group ? group.node : draw.node);
+                warp.interpolate(20);
+                warp.transform(([x, y]) => [x, this.getY(x, y, groupHeight, groupWidth, effectType)]);
+                // console.log('Guide path length', path.length());
+            }
         });
     }
 
+    addNoneEffect() {
+        this._renderEffect('none', null);
+    }
+
     addArchEffect() {
-        // Initialize SVG viewport when shape effect is needed
-        this._initializeViewportSvg();
-
-        opentype.load(this.FONT_URL, (err, font) => {
-            if (err) {
-                console.error('Font load failed', err);
-                return;
-            }
-
-            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 150, false, false);
-            const textSvg = makerjs.exporter.toSVG(textModel, {
-                fill: this._text_defaults.fontColor,
-                stroke: this._text_defaults.outlineColor,
-                strokeWidth: this._text_defaults.outlineEnabled ? this._text_defaults.outlineThickness : 0,
-                fillRule: 'evenodd',
-                scalingStroke: false
-            });
-
-            const draw = SVG(textSvg).addClass('Main');
-            draw.size(this.SVG_SIZE, this.SVG_SIZE);
-            draw.id('viewportSvg');
-
-            const group = draw.children()[0];
-            if (group) {
-                group.id('svgGroup');
-            }
-
-            draw.addTo(this._svgContainer);
-            this._root = draw;
-            this.svgElement = draw.node;
-
-            const path = draw.path('M0,100 C50,50 560,50 560,100').attr({ stroke: 'none', fill: 'none' });
-            // const path = draw.path('M0,0 Q' + (600 / 4) + ',-25 ' + (600 / 2) + ',0 T' + 600 + ', 0').attr({ stroke: '#009dff', fill: 'none' })
-            this._path = path;
-
-            const warp = new Warp(group ? group.node : draw.node);
-            warp.interpolate(20);
-            warp.transform(([x, y]) => [x, this.getY(x, y)]);
-            console.log('Guide path length', path.length());
+        this._renderEffect('arch', (draw) => {
+            return draw.path('M0,' + this.getFontSize() + ' C50,20 ' + (this.SVG_SIZE) + ',20 ' + (this.SVG_SIZE) + ',' + this.getFontSize() + '').attr({ stroke: 'none', fill: 'none' });
         });
     }
 
     addFlagEffect() {
-        // Initialize SVG viewport when shape effect is needed
-        this._initializeViewportSvg();
+        this._renderEffect('flag', (draw) => {
+            return draw.path('M0,0 Q' + (this.SVG_SIZE / 4) + ',-50 ' + (this.SVG_SIZE / 2) + ',0 T' + this.SVG_SIZE + ', 0').attr({ stroke: 'none', fill: 'none' });
+        });
+    }
 
-        opentype.load(this.FONT_URL, (err, font) => {
-            if (err) {
-                console.error('Font load failed', err);
-                return;
-            }
+    addBulgeEffect() {
+        this._renderEffect('bulge', (draw) => {
+            return draw.path('M0,0 Q' + (this.SVG_SIZE / 4) + ',-50 ' + (this.SVG_SIZE / 2) + ',0').attr({ stroke: 'none', fill: 'none' });
+        });
+    }
 
-            const textModel = new makerjs.models.Text(font, this.getText(), this.getFontSize ? (this.getFontSize() || 100) : 100, false, false);
-            const textSvg = makerjs.exporter.toSVG(textModel, {
-                fill: this._text_defaults.fontColor,
-                stroke: this._text_defaults.outlineColor,
-                strokeWidth: this._text_defaults.outlineEnabled ? this._text_defaults.outlineThickness : 0,
-                fillRule: 'evenodd',
-                scalingStroke: false
-            });
-
-            const draw = SVG(textSvg).addClass('Main');
-            draw.size(this.SVG_SIZE, this.SVG_SIZE);
-            draw.id('viewportSvg');
-
-            const group = draw.children()[0];
-            if (group) {
-                group.id('svgGroup');
-            }
-
-            draw.addTo(this._svgContainer);
-            this._root = draw;
-            this.svgElement = draw.node;
-
-            const path = draw.path('M0,0 Q' + (600 / 4) + ',-25 ' + (600 / 2) + ',0 T' + 600 + ', 0').attr({ stroke: '#009dff', fill: 'none' })
-            this._path = path;
-
-            const warp = new Warp(group ? group.node : draw.node);
-            warp.interpolate(20);
-            warp.transform(([x, y]) => [x, this.getY(x, y)]);
-            console.log('Guide path length', path.length());
+    addPinchEffect() {
+        this._renderEffect('pinch', (draw) => {
+            return draw.path('M0,0 Q' + (this.SVG_SIZE / 4) + ',-25 ' + (this.SVG_SIZE / 2) + ',0 T' + this.SVG_SIZE + ', 0').attr({ stroke: 'none', fill: 'none' });
         });
     }
 

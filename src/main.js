@@ -310,7 +310,7 @@ const applyTextTextureToPanels = async (dataUrl) => {
 
     if (!currentSvgLayer) {
         currentSvgLayer = new WrapviewSVGLayer(WrapviewUtils.guid(), {
-            size: { width: size, height: size },
+            size: { width: 480, height: 480 },
             pivot: { x: 0.5, y: 0.5 },
             position: { x: size / 2, y: size / 2 },
             angle: 0,
@@ -372,6 +372,10 @@ const renderEffectAndApplyTexture = () => {
         vectorText.addArchEffect();
     } else if (currentEffect === 'flag') {
         vectorText.addFlagEffect();
+    } else if (currentEffect === 'bulge') {
+        vectorText.addBulgeEffect();
+    } else if (currentEffect === 'pinch') {
+        vectorText.addPinchEffect();
     } else {
         vectorText.addNoneEffect();
     }
@@ -471,6 +475,22 @@ const setupVectorTextUi = () => {
     if (applyFlagBtn) {
         applyFlagBtn.addEventListener('click', () => {
             currentEffect = 'flag';
+            renderEffectAndApplyTexture();
+        });
+    }
+
+    const applyBulgeBtn = document.getElementById('apply-bulge-effect-btn');
+    if (applyBulgeBtn) {
+        applyBulgeBtn.addEventListener('click', () => {
+            currentEffect = 'bulge';
+            renderEffectAndApplyTexture();
+        });
+    }
+
+    const applyPinchBtn = document.getElementById('apply-pinch-effect-btn');
+    if (applyPinchBtn) {
+        applyPinchBtn.addEventListener('click', () => {
+            currentEffect = 'pinch';
             renderEffectAndApplyTexture();
         });
     }
