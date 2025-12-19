@@ -150,7 +150,7 @@ class WrapviewVectorText {
 
     addBulgeEffect() {
         this._renderEffect('bulge', (draw) => {
-            return draw.path('M0,0 Q' + (this.SVG_SIZE / 4) + ',-50 ' + (this.SVG_SIZE / 2) + ',0').attr({ stroke: 'none', fill: 'none' });
+            return draw.path('M0,0 Q' + (this.SVG_SIZE / 4) + ',-25 ' + (this.SVG_SIZE / 2) + ',0').attr({ stroke: 'none', fill: 'none' });
         });
     }
 
