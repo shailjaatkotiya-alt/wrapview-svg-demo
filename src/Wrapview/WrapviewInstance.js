@@ -11,7 +11,6 @@ import {
 } from 'three';
 import { WrapviewSettings } from "./WrapviewSettings.js";
 import { WrapviewEditor } from "./WrapviewEditor.js";
-import { WrapviewSVGEditor } from "./WrapviewSvgEditor.js";
 
 export class WrapviewInstance {
     constructor(id, settings) {
@@ -162,7 +161,6 @@ export class WrapviewInstance {
         this._canvas.width = 1;
         this._canvas.height = 1;
         this._editor = new WrapviewEditor(this.id+'_editor',this);
-        this._svgEditor = new WrapviewSVGEditor(this);
 
         this._scene = new Scene();
         if (this.settings.renderer.hasOwnProperty('background')) {
