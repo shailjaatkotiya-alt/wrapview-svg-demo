@@ -61,7 +61,7 @@ class WrapviewVectorEffect {
 
     _applyArchEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${groupHeight} C${this.SVG_SIZE / 4},20 ${(this.SVG_SIZE * 3) / 4},20 ${this.SVG_SIZE},${groupHeight}`;
+        const pathD = `M0,${groupHeight/4} C${this.SVG_SIZE / 8},50 ${this.SVG_SIZE},50 ${this.SVG_SIZE},${groupHeight/4}`;
         this._path = pathD;
         this._warpText(group, groupHeight, groupWidth, 'arch');
     }
@@ -132,8 +132,9 @@ class WrapviewVectorEffect {
             case 'pinch':
                 return y - (normalizedY * baseWarp);
             case 'arch':
+                return y;
             case 'flag':
-                return y + baseWarp * normalizedY;
+                return y + baseWarp - 80;
             default:
                 return y;
         }
