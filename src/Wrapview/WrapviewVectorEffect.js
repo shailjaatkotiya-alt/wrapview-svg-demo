@@ -1,4 +1,4 @@
-const GOOGLE_FONTS_API_KEY = 'AIzaSyDwE8sM8Ts9SE1ZFkBqEtHNX_3MIwnKNTw';
+const GOOGLE_FONTS_API_KEY = '';
 
 export async function getFontTtfUrl({ family, size }) {
     console.log('Fetching font:', family, size);
