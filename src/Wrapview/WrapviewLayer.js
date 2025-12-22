@@ -1466,7 +1466,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
     setEffect(effect) {
         const oldEffect = this.settings.effect;
-        this.settings.effect = new WrapviewVectorEffect(this.vectorText, effect, this.effectProperties);
+        this.settings.effect = new WrapviewVectorEffect(this._vectorText, effect, this.effectProperties);
         if (oldEffect !== effect && this._loaded) {
             this._update({ effect: effect });
         }

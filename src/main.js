@@ -9,6 +9,31 @@ import { WrapviewObject } from './Wrapview/WrapviewObject.js';
 import { WrapviewSVGLayer, WrapviewVectorSvgTextLayer } from './Wrapview/WrapviewLayer.js';
 import { WrapviewUtils } from './Wrapview/WrapviewUtils.js';
 
+// Constants
+const TEXTURE_SIZE = 2048;
+const LAYER_SIZE = { width: 480, height: 480 };
+const MODEL_PATH = '/3001C_SMALL/3001C_SMALL_LOD0.glb';
+const TEXTURE_BASE_PATH = '/3001C_SMALL/textures';
+
+// Material configurations for textured panels
+const TEXTURED_MATERIALS_CONFIG = {
+    COLLAR: { suffix: 1005, base: 'F_3001C_SMALL_diffuse_1005.png' },
+    BACK_NECK_TAPE: { suffix: 1006, base: 'F_3001C_SMALL_diffuse_1006.png' },
+    LEFT_ARM_SLEEVE: { suffix: 1003, base: 'F_3001C_SMALL_diffuse_1003.png' },
+    RIGHT_ARM_SLEEVE: { suffix: 1004, base: 'F_3001C_SMALL_diffuse_1004.png' },
+    FRONT_BODY: { suffix: 1001, base: 'F_3001C_SMALL_common.png' },
+    BACK_BODY: { suffix: 1002, base: 'F_3001C_SMALL_common.png' },
+};
+
+// Effect button configurations
+const EFFECT_BUTTONS_CONFIG = [
+    { id: 'apply-none-effect-btn', effect: 'none' },
+    { id: 'apply-arch-effect-btn', effect: 'arch' },
+    { id: 'apply-flag-effect-btn', effect: 'flag' },
+    { id: 'apply-bulge-effect-btn', effect: 'bulge' },
+    { id: 'apply-pinch-effect-btn', effect: 'pinch' },
+];
+
 WrapviewSettings.init();
 
 // Initialize Wrapview 3D instance
@@ -36,166 +61,52 @@ controls.target.set(0, 0, 0);
 controls.update();
 
 wrapviewInstance.updateOffsets();
-const promises = [];
 
-var materials = new WrapviewMaterialSet();
-const shadow = new WrapviewShadowMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            alpha:
-                "https://combibmark.s3.amazonaws.com/models/shadow_ultra_light_inverted.png",
-        },
-    }
-);
-
-var color = new WrapviewParameter(null, "textColor");
+// Initialize text color parameter
+const color = new WrapviewParameter(null, "textColor");
 color.set({
     type: "fixed",
     value: "#2b2b2b",
     descriptor: "Black",
 });
 
-const collar = new WrapviewTexturedMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1005.png",
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1005.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1005.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1005.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1005.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1005.png",
-        },
-        build: {
-            parameters: {
-                base: true,
-                size: 2048,
-                layers: [],
-                color: color,
+// Factory function to create textured materials
+const createTexturedMaterial = (config) => {
+    const { suffix, base } = config;
+    return new WrapviewTexturedMaterial(
+        wrapviewInstance,
+        {
+            resources: {
+                base: `${TEXTURE_BASE_PATH}/${base}`,
+                diffuse: `${TEXTURE_BASE_PATH}/${base}`,
+                normal: `${TEXTURE_BASE_PATH}/F_3001C_SMALL_normal_${suffix}.png`,
+                alpha: `${TEXTURE_BASE_PATH}/F_3001C_SMALL_opacity_${suffix}.png`,
+                metalness: `${TEXTURE_BASE_PATH}/F_3001C_SMALL_metalness_${suffix}.png`,
             },
-        },
-    }
-);
+            build: {
+                parameters: {
+                    base: true,
+                    size: TEXTURE_SIZE,
+                    layers: [],
+                    color: color,
+                },
+            },
+        }
+    );
+};
 
-const backNeckTape = new WrapviewTexturedMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1006.png",
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1006.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1006.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1006.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1006.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1006.png",
-        },
-        build: {
-            parameters: {
-                base: true,
-                size: 2048,
-                layers: [],
-                color: color,
-            },
-        },
-    }
-);
+// Create all textured materials
+const texturedMaterials = {};
+Object.entries(TEXTURED_MATERIALS_CONFIG).forEach(([name, config]) => {
+    texturedMaterials[name] = createTexturedMaterial(config);
+});
 
-const leftArmSleeve = new WrapviewTexturedMaterial(
+// Create special materials
+const shadow = new WrapviewShadowMaterial(
     wrapviewInstance,
     {
         resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1003.png",
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1003.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1003.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1003.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1003.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1003.png",
-        },
-        build: {
-            parameters: {
-                base: true,
-                size: 2048,
-                layers: [],
-                color: color,
-            },
-        },
-    }
-);
-
-const rightArmSleeve = new WrapviewTexturedMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1004.png",
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_diffuse_1004.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1004.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1004.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1004.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1004.png",
-        },
-        build: {
-            parameters: {
-                base: true, // Enable base layer building for text editing
-                size: 2048,
-                layers: [],
-                color: color,
-            },
-        },
-    }
-);
-
-const frontBody = new WrapviewTexturedMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_common.png", // Base layer for text editing
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1001.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1001.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1001.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1001.png",
-        },
-        build: {
-            parameters: {
-                base: true, // Enable base layer building for text editing
-                size: 2048,
-                layers: [],
-                color: color,
-            },
-        },
-    }
-);
-
-const backBody = new WrapviewTexturedMaterial(
-    wrapviewInstance,
-    {
-        resources: {
-            base: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
-            diffuse: "/3001C_SMALL/textures/F_3001C_SMALL_common.png",
-            normal: "/3001C_SMALL/textures/F_3001C_SMALL_normal_1002.png",
-            alpha: "/3001C_SMALL/textures/F_3001C_SMALL_opacity_1002.png",
-            // roughness:
-            // 	"/3001C_SMALL/textures/F_3001C_SMALL_roughness_1002.png",
-            metalness:
-                "/3001C_SMALL/textures/F_3001C_SMALL_metalness_1002.png",
-        },
-        build: {
-            parameters: {
-                base: true,
-                size: 2048,
-                layers: [],
-                color: color,
-            },
+            alpha: "https://combibmark.s3.amazonaws.com/models/shadow_ultra_light_inverted.png",
         },
     }
 );
@@ -204,30 +115,23 @@ const stitches = new WrapviewStitchMaterial(
     wrapviewInstance,
     {
         resources: {
-            diffuse: "/3001C_SMALL/textures/Basic_Offset_2193.png",
+            diffuse: `${TEXTURE_BASE_PATH}/Basic_Offset_2193.png`,
         },
     }
 );
 
-promises.push(
-    collar.init(),
-    backNeckTape.init(),
-    leftArmSleeve.init(),
-    rightArmSleeve.init(),
-    frontBody.init(),
-    backBody.init(),
+// Initialize all materials in parallel
+const materialsReady = Promise.all([
+    ...Object.values(texturedMaterials).map(m => m.init()),
     shadow.init(),
-    stitches.init()
-);
+    stitches.init(),
+]);
 
-const materialsReady = Promise.all(promises);
-
-materials.add("COLLAR", collar);
-materials.add("BACK_NECK_TAPE", backNeckTape);
-materials.add("LEFT_ARM_SLEEVE", leftArmSleeve);
-materials.add("RIGHT_ARM_SLEEVE", rightArmSleeve);
-materials.add("FRONT_BODY", frontBody);
-materials.add("BACK_BODY", backBody);
+// Add all materials to the set
+const materials = new WrapviewMaterialSet();
+Object.entries(texturedMaterials).forEach(([name, material]) => {
+    materials.add(name, material);
+});
 materials.add("EXT_Stitches", stitches);
 materials.add("99_ShadowPanel", shadow);
 
@@ -247,7 +151,7 @@ const item = new WrapviewObject({
     },
 });
 item.setMaterials(materials);
-item.load("/3001C_SMALL/3001C_SMALL_LOD0.glb").then(() => {
+item.load(MODEL_PATH).then(() => {
     wrapviewInstance.addObject(item);
 });
 
@@ -272,7 +176,7 @@ const debounce = (func, delay) => {
     };
 };
 
-const currentPanel = function () {
+const currentPanel = () => {
     const panel = materials.get("FRONT_BODY");
     if (!panel) {
         console.error("FRONT_BODY panel not found in materials");
@@ -374,9 +278,12 @@ const renderEffectAndApplyTexture = async () => {
 };
 
 const setupVectorTextUi = () => {
-    const textInput = document.getElementById('quick-text-input');
+    // Helper function to get element safely
+    const getElement = (id) => document.getElementById(id);
+
+    // Text input handler
+    const textInput = getElement('quick-text-input');
     if (textInput) {
-        // Initialize inputs
         textInput.value = vectorTextLayer?.getText() || 'Hello World';
         textInput.addEventListener('input', (e) => {
             if (vectorTextLayer) {
@@ -386,8 +293,9 @@ const setupVectorTextUi = () => {
         });
     }
 
-    const fontSizeSlider = document.getElementById('font-size-slider');
-    const fontSizeValue = document.getElementById('font-size-value');
+    // Font size slider handler
+    const fontSizeSlider = getElement('font-size-slider');
+    const fontSizeValue = getElement('font-size-value');
     if (fontSizeSlider) {
         const updateFontSize = (val) => {
             const size = parseInt(val, 10);
@@ -397,45 +305,43 @@ const setupVectorTextUi = () => {
                 renderEffectAndApplyTexture();
             }
         };
-        // initialize display
         updateFontSize(fontSizeSlider.value);
         fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
     }
 
-    const fillColorInput = document.getElementById('fill-color-input');
-    if (fillColorInput) {
-        fillColorInput.addEventListener('input', (e) => {
-            if (vectorTextLayer) {
-                const color = e.target.value;
-                vectorTextLayer.setFontColor(color);
-                renderEffectAndApplyTexture();
-            }
-        });
-    }
+    // Color and number input handler factory
+    const createColorInputHandler = (elementId, setterMethod) => {
+        const element = getElement(elementId);
+        if (element) {
+            element.addEventListener('input', (e) => {
+                if (vectorTextLayer) {
+                    vectorTextLayer[setterMethod](e.target.value);
+                    renderEffectAndApplyTexture();
+                }
+            });
+        }
+    };
 
-    const outlineColorInput = document.getElementById('outline-color-input');
-    if (outlineColorInput) {
-        outlineColorInput.addEventListener('input', (e) => {
-            if (vectorTextLayer) {
-                const color = e.target.value;
-                vectorTextLayer.setOutlineColor(color);
-                renderEffectAndApplyTexture();
-            }
-        });
-    }
+    const createNumberInputHandler = (elementId, setterMethod) => {
+        const element = getElement(elementId);
+        if (element) {
+            element.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value, 10);
+                if (Number.isFinite(value) && vectorTextLayer) {
+                    vectorTextLayer[setterMethod](value);
+                    renderEffectAndApplyTexture();
+                }
+            });
+        }
+    };
 
-    const outlineWidthInput = document.getElementById('outline-width-input');
-    if (outlineWidthInput) {
-        outlineWidthInput.addEventListener('input', (e) => {
-            const thickness = parseInt(e.target.value, 10);
-            if (Number.isFinite(thickness) && vectorTextLayer) {
-                vectorTextLayer.setOutlineThickness(thickness);
-                renderEffectAndApplyTexture();
-            }
-        });
-    }
+    // Setup color inputs
+    createColorInputHandler('fill-color-input', 'setFontColor');
+    createColorInputHandler('outline-color-input', 'setOutlineColor');
+    createNumberInputHandler('outline-width-input', 'setOutlineThickness');
 
-    const toggleOutlineBtn = document.getElementById('toggle-outline-btn');
+    // Outline toggle button
+    const toggleOutlineBtn = getElement('toggle-outline-btn');
     if (toggleOutlineBtn) {
         const setBtnState = (enabled) => {
             toggleOutlineBtn.dataset.enabled = String(!!enabled);
@@ -445,56 +351,23 @@ const setupVectorTextUi = () => {
         toggleOutlineBtn.addEventListener('click', () => {
             if (vectorTextLayer) {
                 const isEnabled = vectorTextLayer.outline()?.include || false;
-                if (isEnabled) {
-                    vectorTextLayer.removeOutline();
-                } else {
-                    vectorTextLayer.addOutline();
-                }
+                isEnabled ? vectorTextLayer.removeOutline() : vectorTextLayer.addOutline();
                 setBtnState(!isEnabled);
                 renderEffectAndApplyTexture();
             }
         });
     }
 
-    const applyArchBtn = document.getElementById('apply-arch-effect-btn');
-    if (applyArchBtn) {
-        applyArchBtn.addEventListener('click', () => {
-            currentEffect = 'arch';
-            renderEffectAndApplyTexture();
-        });
-    }
-
-    const applyNoneBtn = document.getElementById('apply-none-effect-btn');
-    if (applyNoneBtn) {
-        applyNoneBtn.addEventListener('click', () => {
-            currentEffect = 'none';
-            renderEffectAndApplyTexture();
-        });
-    }
-
-    const applyFlagBtn = document.getElementById('apply-flag-effect-btn');
-    if (applyFlagBtn) {
-        applyFlagBtn.addEventListener('click', () => {
-            currentEffect = 'flag';
-            renderEffectAndApplyTexture();
-        });
-    }
-
-    const applyBulgeBtn = document.getElementById('apply-bulge-effect-btn');
-    if (applyBulgeBtn) {
-        applyBulgeBtn.addEventListener('click', () => {
-            currentEffect = 'bulge';
-            renderEffectAndApplyTexture();
-        });
-    }
-
-    const applyPinchBtn = document.getElementById('apply-pinch-effect-btn');
-    if (applyPinchBtn) {
-        applyPinchBtn.addEventListener('click', () => {
-            currentEffect = 'pinch';
-            renderEffectAndApplyTexture();
-        });
-    }
+    // Effect buttons
+    EFFECT_BUTTONS_CONFIG.forEach(({ id, effect }) => {
+        const btn = getElement(id);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                currentEffect = effect;
+                renderEffectAndApplyTexture();
+            });
+        }
+    });
 };
 
 materialsReady.then(async () => {
