@@ -1200,7 +1200,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         this._loaded = false;
         this._canvas = null;
         this._image = null;
-        this._bounds = null;
         this._vectorText = null;
         this._effect = null;
         this.SVG_SIZE = 600;
@@ -1209,9 +1208,10 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     defaults() {
         return {
             text: "Vector SVG Text",
-            vectorText: null,
             fontFamily: null,
             fontVariant: 500,
+            fontSize: 48,
+            fontColor: '#ffffff',
             size: {
                 height: 480,
                 width: 480
@@ -1221,8 +1221,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 color: '#000000',
                 thickness: 2
             },
-            fontColor: '#ffffff',
-            fontSize: 48,
             pivot: {
                 x: 0,
                 y: 0
@@ -1253,7 +1251,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             },
             settings: {
                 text: this.settings.text,
-                vectorText: this.settings.vectorText,
                 fontFamily: this.settings.fontFamily,
                 fontVariant: this.settings.fontVariant,
                 size: this.settings.size,
@@ -1262,6 +1259,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 fontSize: this.settings.fontSize,
                 pivot: this.settings.pivot,
                 position: this.settings.position,
+                angle: this.settings.angle,
                 effect: this.settings.effect,
                 effectProperties: this.settings.effectProperties,
                 scale: this.settings.scale
@@ -1270,20 +1268,18 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     async applySettings(s, m) {
-        // Apply all settings individually for consistency
+        // Apply text and font settings
         this.settings.text = s.text !== undefined ? s.text : this.settings.text;
         this.settings.fontFamily = s.fontFamily !== undefined ? s.fontFamily : this.settings.fontFamily;
         this.settings.fontVariant = s.fontVariant !== undefined ? s.fontVariant : this.settings.fontVariant;
         this.settings.fontSize = s.fontSize !== undefined ? s.fontSize : this.settings.fontSize;
         this.settings.fontColor = s.fontColor !== undefined ? s.fontColor : this.settings.fontColor;
 
-        // Apply size settings
+        // Apply size, position, pivot, and angle
         if (s.size) {
             this.settings.size.width = s.size.width !== undefined ? s.size.width : this.settings.size.width;
             this.settings.size.height = s.size.height !== undefined ? s.size.height : this.settings.size.height;
         }
-
-        // Apply position and angle
         if (s.position) {
             this.settings.position.x = s.position.x !== undefined ? s.position.x : this.settings.position.x;
             this.settings.position.y = s.position.y !== undefined ? s.position.y : this.settings.position.y;
@@ -1293,9 +1289,11 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             this.settings.pivot.y = s.pivot.y !== undefined ? s.pivot.y : this.settings.pivot.y;
         }
         this.settings.angle = s.angle !== undefined ? s.angle : this.settings.angle;
+        this.settings.scale = s.scale !== undefined ? s.scale : this.settings.scale;
 
         // Apply outline settings
         if (s.outline) {
+            this._ensureOutline();
             this.settings.outline.include = s.outline.include !== undefined ? s.outline.include : this.settings.outline.include;
             this.settings.outline.color = s.outline.color !== undefined ? s.outline.color : this.settings.outline.color;
             this.settings.outline.thickness = s.outline.thickness !== undefined ? s.outline.thickness : this.settings.outline.thickness;
@@ -1307,11 +1305,16 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             this.settings.effectProperties.intensity = s.effectProperties.intensity !== undefined ? s.effectProperties.intensity : this.settings.effectProperties.intensity;
             this.settings.effectProperties.characterSpacing = s.effectProperties.characterSpacing !== undefined ? s.effectProperties.characterSpacing : this.settings.effectProperties.characterSpacing;
         }
-        this.settings.scale = s.scale !== undefined ? s.scale : this.settings.scale;
 
         // Render vector text with updated settings
         await this._createVectorText();
         this._loaded = true;
+    }
+
+    _ensureOutline() {
+        if (!this.settings.outline) {
+            this.settings.outline = this.defaults().outline;
+        }
     }
 
     setText(textValue) {
@@ -1332,6 +1335,9 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
     setOutline(o) {
         this.settings.outline = o;
+        if (this._loaded) {
+            this._update({ outline: o });
+        }
     }
 
     outlineColor() {
@@ -1339,7 +1345,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     setOutlineColor(colorValue) {
-        if (!this.settings.outline) this.settings.outline = this.defaults().outline;
+        this._ensureOutline();
         const oldValue = this.settings.outline.color;
         this.settings.outline.color = colorValue;
         if (oldValue !== colorValue && this._loaded) {
@@ -1348,7 +1354,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     setOutlineThickness(t) {
-        if (!this.settings.outline) this.settings.outline = this.defaults().outline;
+        this._ensureOutline();
         const oldValue = this.settings.outline.thickness;
         this.settings.outline.thickness = t;
         if (oldValue !== t && this._loaded) {
@@ -1357,27 +1363,29 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     addOutline() {
-        if (!this.settings.outline) this.settings.outline = this.defaults().outline;
-        if (!this.settings.outline.include && this._loaded) {
-            this.settings.outline.include = true;
+        this._ensureOutline();
+        const shouldUpdate = !this.settings.outline.include && this._loaded;
+        this.settings.outline.include = true;
+        if (shouldUpdate) {
             this._update({ outline: this.settings.outline });
-        } else {
-            this.settings.outline.include = true;
         }
     }
 
     removeOutline() {
-        if (!this.settings.outline) this.settings.outline = this.defaults().outline;
-        if (this.settings.outline.include && this._loaded) {
-            this.settings.outline.include = false;
+        this._ensureOutline();
+        const shouldUpdate = this.settings.outline.include && this._loaded;
+        this.settings.outline.include = false;
+        if (shouldUpdate) {
             this._update({ outline: this.settings.outline });
-        } else {
-            this.settings.outline.include = false;
         }
     }
 
     setFontSize(s) {
+        const oldValue = this.settings.fontSize;
         this.settings.fontSize = s;
+        if (oldValue !== s && this._loaded) {
+            this._update({ fontSize: s });
+        }
     }
 
     setFontFamily(family) {
@@ -1427,7 +1435,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     async _update(changes) {
-        const textRelatedProps = ['text', 'fontFamily', 'fontVariant', 'fontColor', 'outline'];
+        const textRelatedProps = ['text', 'fontFamily', 'fontVariant', 'fontSize', 'fontColor', 'outline'];
         const changedTextProps = Object.keys(changes).filter(key => textRelatedProps.includes(key));
         const effectChanged = changes.hasOwnProperty('effect');
 
@@ -1466,7 +1474,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
     setEffect(effect) {
         const oldEffect = this.settings.effect;
-        this.settings.effect = new WrapviewVectorEffect(this._vectorText, effect, this.effectProperties);
+        this.settings.effect = effect;
         if (oldEffect !== effect && this._loaded) {
             this._update({ effect: effect });
         }
@@ -1619,110 +1627,27 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         });
     }
 
-    _calculateBounds(context, text) {
-        var metrics = context.measureText(text);
-        let height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-        let width = metrics.width;
-        this.settings.size.width = width;
-        this.settings.size.height = height;
+    draw(context) {
+        if (!this._loaded || !this._canvas) return;
 
-        var pivot = {
-            x: this.settings.position.x,
-            y: this.settings.position.y
-        };
+        context.save();
+        context.translate(this.settings.position.x, this.settings.position.y);
+        context.rotate(this.settings.angle);
+        context.drawImage(
+            this._canvas,
+            -this.settings.size.width * this.settings.pivot.x,
+            -this.settings.size.height * this.settings.pivot.y,
+            this.settings.size.width,
+            this.settings.size.height
+        );
+        context.rotate(-this.settings.angle);
+        context.translate(0, 0);
+        context.restore();
+    }
 
-        var rightBottomCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width - (this.settings.size.width * this.settings.pivot.x),
-            y: this.settings.size.height - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var rightBottomBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width + 50 - (this.settings.size.width * this.settings.pivot.x),
-            y: this.settings.size.height + 50 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var rightBottomOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width + 100 - (this.settings.size.width * this.settings.pivot.x),
-            y: this.settings.size.height + 100 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var rightTopCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width - (this.settings.size.width * this.settings.pivot.x),
-            y: 0 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var rightTopBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width + 50 - (this.settings.size.width * this.settings.pivot.x),
-            y: -50 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var rightTopOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: this.settings.size.width + 100 - (this.settings.size.width * this.settings.pivot.x),
-            y: -100 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var leftTopCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: 0 - (this.settings.size.width * this.settings.pivot.x),
-            y: 0 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var leftTopBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: -50 - (this.settings.size.width * this.settings.pivot.x),
-            y: -50 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var leftTopOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: -100 - (this.settings.size.width * this.settings.pivot.x),
-            y: -100 - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        var leftBottomCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
-            x: 0 - (this.settings.size.width * this.settings.pivot.x),
-            y: this.settings.size.height - (this.settings.size.height * this.settings.pivot.y)
-        }, 2 * Math.PI - (this.settings.angle || 0)), {
-            x: -pivot.x,
-            y: -pivot.y
-        });
-
-        this._bounds = {
-            rb: rightBottomCorner,
-            rbb: rightBottomBoundCorner,
-            rbc: rightBottomOuterCorner,
-            rt: rightTopCorner,
-            lb: leftBottomCorner,
-            ltb: leftTopBoundCorner,
-            ltc: leftTopOuterCorner,
-            lt: leftTopCorner,
-            rtb: rightTopBoundCorner,
-            rtc: rightTopOuterCorner
-        };
+    drawHandles(context, editor) {
+        // Vector SVG text layer handles not implemented
+        return;
     }
 }
 
