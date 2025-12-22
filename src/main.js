@@ -394,8 +394,10 @@ materialsReady.then(async () => {
             include: false,
             color: '#000000',
             thickness: 2
-        }
+        },
     });
+
+    vectorTextLayer.setApiKey('')
 
     try {
         await vectorTextLayer.load(null, panel);

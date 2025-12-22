@@ -3,7 +3,7 @@ import { WrapviewSettings } from "./WrapviewSettings.js";
 import { WrapviewParameter } from "./WrapviewParameter.js";
 import { WrapviewFont } from "./WrapviewFont.js";
 import { WrapviewVectorImage } from "./WrapviewVector.js";
-import { getFontTtfUrl, WrapviewVectorEffect } from "./WrapviewVectorEffect.js";
+import { WrapviewVectorEffect } from "./WrapviewVectorEffect.js";
 let makerjs = require('makerjs');
 
 class WrapviewLayer {
@@ -1267,7 +1267,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 angle: this.settings.angle,
                 effect: this.settings.effect,
                 effectProperties: this.settings.effectProperties,
-                scale: this.settings.scale
+                scale: this.settings.scale,
             }
         };
     }
@@ -1498,6 +1498,20 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
     }
 
+    async getFontTtfUrl({ key, family, size }) {
+        console.log('Fetching font:', family, size);
+        if (!key) throw new Error('Missing GOOGLE_FONTS_API_KEY');
+        if (!family) throw new Error('family is required');
+        const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?family=${family}&key=${encodeURIComponent(key)}&sort=alpha`);
+
+        if (!res.ok) throw new Error(`Webfonts API error: ${res.status} ${res.statusText}`);
+        const data = await res.json();
+
+        const url = data.items[0].files[size] ? data.items[0].files[size] : data.items[0].files["regular"];
+        if (!url) throw new Error(`No URL for variant ${size}`);
+        return url;
+    }
+
     async applyEffectToSvgLayer(svgLayer) {
         if (!svgLayer || typeof svgLayer.updateFromDataUrl !== 'function') return Promise.resolve();
 
@@ -1517,7 +1531,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 console.warn('Font family and variant are required for vector text rendering');
                 return;
             }
-            const ttfUrl = await getFontTtfUrl({
+            const ttfUrl = await this.getFontTtfUrl({
                 key: this.googleFontAPIKey,
                 family: this.settings.fontFamily,
                 size: this.settings.fontVariant
