@@ -342,10 +342,8 @@ const applyTextTextureToPanels = async (dataUrl) => {
     console.log('Text texture applied to garment panel');
 };
 
-// Debounced version with 300ms delay
 const debouncedApplyTexture = debounce(applyTextTextureToPanels, 300);
 
-// WrapviewVectorSvgTextLayer setup
 let vectorTextLayer = null;
 let currentEffect = 'none';
 
@@ -365,10 +363,9 @@ const updateGarmentTexture = async () => {
 
 const renderEffectAndApplyTexture = async () => {
     if (!vectorTextLayer) return;
-    
+
     try {
         vectorTextLayer.setEffect(currentEffect);
-        // Wait for the layer to finish rendering
         await new Promise(resolve => setTimeout(resolve, 100));
         updateGarmentTexture();
     } catch (error) {
@@ -501,7 +498,6 @@ const setupVectorTextUi = () => {
 };
 
 materialsReady.then(async () => {
-    // Initialize WrapviewVectorSvgTextLayer
     const panel = currentPanel();
     if (!panel) {
         console.error('Front body panel not found');
@@ -509,7 +505,7 @@ materialsReady.then(async () => {
     }
 
     const size = panel.settings.build?.parameters?.size || 2048;
-    
+
     vectorTextLayer = new WrapviewVectorSvgTextLayer(WrapviewUtils.guid(), {
         text: 'Hello World',
         fontFamily: 'ABeeZee',
@@ -529,14 +525,9 @@ materialsReady.then(async () => {
     });
 
     try {
-        // Load the layer with initial settings
         await vectorTextLayer.load(null, panel);
         currentEffect = 'none';
-        
-        // Setup UI after layer is ready
         setupVectorTextUi();
-        
-        // Initial texture application
         setTimeout(() => {
             updateGarmentTexture();
         }, 500);

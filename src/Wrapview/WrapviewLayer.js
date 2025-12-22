@@ -53,7 +53,6 @@ class WrapviewLayer {
     }
 }
 
-
 class WrapviewImageLayer extends WrapviewLayer {
     constructor(id, settings) {
         super(id, settings);
@@ -1427,15 +1426,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         if (o.height !== undefined) this.settings.size.height = o.height;
     }
 
-    setEffect(effect) {
-        this.settings.effect = new WrapviewVectorEffect(this.vectorText, effect, this.effectProperties)
-    }
-
-    /**
-     * Smart update function that handles different change scenarios
-     * @param {Object} changes - Object with changed properties
-     * @private
-     */
     async _update(changes) {
         const textRelatedProps = ['text', 'fontFamily', 'fontVariant', 'fontColor', 'outline'];
         const changedTextProps = Object.keys(changes).filter(key => textRelatedProps.includes(key));
@@ -1443,7 +1433,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
         try {
             if (changedTextProps.length > 0) {
-                // Text-related properties changed: rebuild SVG → apply effect → render
                 await this._createVectorText();
                 if (effectChanged) {
                     this._applyEffect(changes.effect);
@@ -1452,7 +1441,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 }
                 await this._renderSvgToCanvas();
             } else if (effectChanged) {
-                // Only effect changed: reuse existing SVG and just update the effect
                 if (this._vectorText) {
                     this._applyEffect(changes.effect);
                     await this._renderSvgToCanvas();
@@ -1463,11 +1451,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         }
     }
 
-    /**
-     * Apply effect to the current vector text SVG
-     * @param {string} effectName - Name of the effect to apply
-     * @private
-     */
     _applyEffect(effectName) {
         if (!this._vectorText) {
             console.warn('Vector text not created yet, cannot apply effect');
@@ -1481,41 +1464,52 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         );
     }
 
-    /**
-     * Set effect and intelligently update rendering
-     * @param {string} effect - Effect name to apply
-     */
     setEffect(effect) {
         const oldEffect = this.settings.effect;
-        this.settings.effect = effect;
+        this.settings.effect = new WrapviewVectorEffect(this.vectorText, effect, this.effectProperties);
         if (oldEffect !== effect && this._loaded) {
             this._update({ effect: effect });
         }
     }
 
+    _getEffectSvgString() {
+        if (!this._effect || !this._effect.svgElement) {
+            return null;
+        }
+        return new XMLSerializer().serializeToString(this._effect.svgElement);
+    }
+
+    getEffectSvgDataUrl() {
+        const svgString = this._getEffectSvgString();
+        if (!svgString) return null;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+    }
+
+    async applyEffectToSvgLayer(svgLayer) {
+        if (!svgLayer || typeof svgLayer.updateFromDataUrl !== 'function') return Promise.resolve();
+
+        const dataUrl = this.getEffectSvgDataUrl();
+        if (!dataUrl) return Promise.resolve();
+
+        return svgLayer.updateFromDataUrl(dataUrl);
+    }
+
     async _createVectorText() {
         try {
-            // Validate required settings
             if (!this.settings.text) {
                 console.warn('No text provided for vector SVG text layer');
                 return;
             }
-
             if (!this.settings.fontFamily || !this.settings.fontVariant) {
                 console.warn('Font family and variant are required for vector text rendering');
                 return;
             }
-
-            // Fetch TTF URL from Google Fonts
             const ttfUrl = await getFontTtfUrl({
                 family: this.settings.fontFamily,
                 size: this.settings.fontVariant
             });
 
-            // Load font and render vector text SVG
             this._vectorText = await this._renderVectorTextSvg(ttfUrl);
-
-            // Apply effect to the SVG
             if (this._vectorText) {
                 this._applyEffect(this.settings.effect || 'none');
                 await this._renderSvgToCanvas();
@@ -1532,16 +1526,13 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 reject(new Error('Font URL not set'));
                 return;
             }
-
             opentype.load(ttfUrl, (err, font) => {
                 if (err) {
                     console.error('Font load failed:', err);
                     reject(err);
                     return;
                 }
-
                 try {
-                    // Create text model using makerjs
                     const textModel = new makerjs.models.Text(
                         font,
                         this.settings.text,
@@ -1549,8 +1540,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                         false,
                         false
                     );
-
-                    // Export to SVG with color and outline
                     const svgTextElement = makerjs.exporter.toSVG(textModel, {
                         fill: this.settings.fontColor,
                         stroke: this.settings.outline?.color || this.defaults().outline.color,
@@ -1558,7 +1547,6 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                         fillRule: 'evenodd',
                         scalingStroke: false
                     });
-
                     resolve(svgTextElement);
                 } catch (error) {
                     reject(new Error('Failed to create vector text SVG: ' + error.message));
@@ -1570,14 +1558,12 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     load(data, material) {
         return new Promise(async (resolve, reject) => {
             try {
-                // Validate required settings before loading
                 if (!this.settings.fontFamily || !this.settings.fontVariant) {
                     console.warn('Font family and variant are required for vector text rendering');
                     reject(new Error('Font family and variant required'));
                     return;
                 }
 
-                // Merge data with settings if provided
                 if (data) {
                     if (data.text) this.settings.text = data.text;
                     if (data.fontFamily) this.settings.fontFamily = data.fontFamily;
@@ -1586,9 +1572,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                     if (data.fontColor) this.settings.fontColor = data.fontColor;
                 }
 
-                // Create vector text with current settings
                 await this._createVectorText();
-
                 this._loaded = true;
                 resolve();
             } catch (error) {
@@ -1600,14 +1584,11 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
     _renderSvgToCanvas() {
         return new Promise((resolve, reject) => {
-            if (!this._effect || !this._effect.svgElement) {
+            const dataUrl = this.getEffectSvgDataUrl();
+            if (!dataUrl) {
                 reject(new Error('SVG viewport element not found'));
                 return;
             }
-
-            const svgData = new XMLSerializer().serializeToString(this._effect.svgElement);
-            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
 
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1623,7 +1604,8 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 ctx.clearRect(0, 0, this.SVG_SIZE, this.SVG_SIZE);
                 ctx.drawImage(img, 0, 0, this.SVG_SIZE, this.SVG_SIZE);
 
-                URL.revokeObjectURL(url);
+                this._effectDataUrl = dataUrl;
+                this.setNeedsUpdate();
                 resolve(this._canvas);
 
                 if (this._onUpdate) {
@@ -1631,10 +1613,9 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 }
             };
             img.onerror = () => {
-                URL.revokeObjectURL(url);
                 reject(new Error('Failed to render viewport SVG to canvas'));
             };
-            img.src = url;
+            img.src = dataUrl;
         });
     }
 

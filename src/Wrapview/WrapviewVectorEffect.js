@@ -1,4 +1,3 @@
-let makerjs = require('makerjs');
 const GOOGLE_FONTS_API_KEY = 'AIzaSyDwE8sM8Ts9SE1ZFkBqEtHNX_3MIwnKNTw';
 
 export async function getFontTtfUrl({ family, size }) {
@@ -96,7 +95,6 @@ class WrapviewVectorEffect {
         draw.size(this.SVG_SIZE, this.SVG_SIZE);
         draw.id('viewportSvg');
         
-        // Store the SVG element and root
         this.svgElement = draw.node;
         this.root = draw;
 
@@ -125,16 +123,9 @@ class WrapviewVectorEffect {
 
     _getWarpedY(x, y, h, w, effectType, intensity = 1) {
         if (!Number.isFinite(x) || !Number.isFinite(y)) return y;
-
-        // Normalize x position (0 to 1)
         const normalizedX = x / w;
-
-        // Calculate base warp using sine wave for smooth effect
         const baseWarp = Math.sin(normalizedX * Math.PI) * (h / 4) * intensity;
-
-        // Normalize Y position relative to center
         const normalizedY = (y - (h / 2)) / (h / 2);
-
         switch (effectType) {
             case 'bulge':
                 return y + (normalizedY * baseWarp);
