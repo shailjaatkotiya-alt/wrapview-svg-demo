@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { WrapviewVectorText } from './Wrapview/WrapviewVectorText.js';
 import { OrbitControls } from '../src/Wrapview/plugins/OrbitControls.js';
 import { Wrapview } from './Wrapview/Wrapview.js';
 import { WrapviewSettings } from './Wrapview/WrapviewSettings.js';
@@ -7,7 +6,7 @@ import { WrapviewMaterialSet } from './Wrapview/WrapviewSets.js';
 import { WrapviewShadowMaterial, WrapviewTexturedMaterial, WrapviewStitchMaterial } from './Wrapview/WrapviewMaterial.js';
 import { WrapviewParameter } from './Wrapview/WrapviewParameter.js';
 import { WrapviewObject } from './Wrapview/WrapviewObject.js';
-import { WrapviewSVGLayer } from './Wrapview/WrapviewLayer.js';
+import { WrapviewSVGLayer, WrapviewVectorSvgTextLayer } from './Wrapview/WrapviewLayer.js';
 import { WrapviewUtils } from './Wrapview/WrapviewUtils.js';
 
 WrapviewSettings.init();
@@ -346,52 +345,47 @@ const applyTextTextureToPanels = async (dataUrl) => {
 // Debounced version with 300ms delay
 const debouncedApplyTexture = debounce(applyTextTextureToPanels, 300);
 
-// WrapviewVectorText setup
-let vectorText = new WrapviewVectorText('vectorText', {});
+// WrapviewVectorSvgTextLayer setup
+let vectorTextLayer = null;
 let currentEffect = 'none';
 
 const updateGarmentTexture = async () => {
     try {
-        if (!vectorText) return;
-        const canvas = await vectorText.renderSvgViewportToCanvas();
-        if (!canvas) {
-            console.error('Failed to get canvas from viewport SVG');
+        if (!vectorTextLayer || !vectorTextLayer._canvas) {
+            console.warn('Vector text layer or canvas not ready');
             return;
         }
 
-        const dataUrl = canvas.toDataURL("image/png");
+        const dataUrl = vectorTextLayer._canvas.toDataURL("image/png");
         debouncedApplyTexture(dataUrl);
     } catch (error) {
         console.error('Error applying SVG viewport texture:', error);
     }
 };
 
-const renderEffectAndApplyTexture = () => {
-    if (!vectorText) return;
-    if (currentEffect === 'arch') {
-        vectorText.addArchEffect();
-    } else if (currentEffect === 'flag') {
-        vectorText.addFlagEffect();
-    } else if (currentEffect === 'bulge') {
-        vectorText.addBulgeEffect();
-    } else if (currentEffect === 'pinch') {
-        vectorText.addPinchEffect();
-    } else {
-        vectorText.addNoneEffect();
-    }
-    setTimeout(() => {
+const renderEffectAndApplyTexture = async () => {
+    if (!vectorTextLayer) return;
+    
+    try {
+        vectorTextLayer.setEffect(currentEffect);
+        // Wait for the layer to finish rendering
+        await new Promise(resolve => setTimeout(resolve, 100));
         updateGarmentTexture();
-    }, 500);
+    } catch (error) {
+        console.error('Error rendering effect:', error);
+    }
 };
 
 const setupVectorTextUi = () => {
     const textInput = document.getElementById('quick-text-input');
     if (textInput) {
         // Initialize inputs
-        textInput.value = vectorText.getText();
+        textInput.value = vectorTextLayer?.getText() || 'Hello World';
         textInput.addEventListener('input', (e) => {
-            vectorText.setText(e.target.value || '');
-            renderEffectAndApplyTexture();
+            if (vectorTextLayer) {
+                vectorTextLayer.setText(e.target.value || '');
+                renderEffectAndApplyTexture();
+            }
         });
     }
 
@@ -400,9 +394,9 @@ const setupVectorTextUi = () => {
     if (fontSizeSlider) {
         const updateFontSize = (val) => {
             const size = parseInt(val, 10);
-            if (Number.isFinite(size)) {
-                vectorText.setFontSize(size);
-                if (fontSizeValue) fontSizeValue.textContent = String(size);
+            if (Number.isFinite(size) && vectorTextLayer) {
+                vectorTextLayer.setFontSize(size);
+                if (fontSizeValue) fontSizeValue.textContent = size;
                 renderEffectAndApplyTexture();
             }
         };
@@ -414,18 +408,22 @@ const setupVectorTextUi = () => {
     const fillColorInput = document.getElementById('fill-color-input');
     if (fillColorInput) {
         fillColorInput.addEventListener('input', (e) => {
-            const color = e.target.value;
-            vectorText.setFontColor(color);
-            renderEffectAndApplyTexture();
+            if (vectorTextLayer) {
+                const color = e.target.value;
+                vectorTextLayer.setFontColor(color);
+                renderEffectAndApplyTexture();
+            }
         });
     }
 
     const outlineColorInput = document.getElementById('outline-color-input');
     if (outlineColorInput) {
         outlineColorInput.addEventListener('input', (e) => {
-            const color = e.target.value;
-            vectorText.setOutlineColor(color);
-            renderEffectAndApplyTexture();
+            if (vectorTextLayer) {
+                const color = e.target.value;
+                vectorTextLayer.setOutlineColor(color);
+                renderEffectAndApplyTexture();
+            }
         });
     }
 
@@ -433,8 +431,8 @@ const setupVectorTextUi = () => {
     if (outlineWidthInput) {
         outlineWidthInput.addEventListener('input', (e) => {
             const thickness = parseInt(e.target.value, 10);
-            if (Number.isFinite(thickness)) {
-                vectorText.setOutlineThickness(thickness);
+            if (Number.isFinite(thickness) && vectorTextLayer) {
+                vectorTextLayer.setOutlineThickness(thickness);
                 renderEffectAndApplyTexture();
             }
         });
@@ -446,12 +444,18 @@ const setupVectorTextUi = () => {
             toggleOutlineBtn.dataset.enabled = String(!!enabled);
             toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
         };
-        setBtnState(vectorText.getOutlineEnabled());
+        setBtnState(vectorTextLayer?.outline()?.include || false);
         toggleOutlineBtn.addEventListener('click', () => {
-            const isEnabled = vectorText.getOutlineEnabled();
-            vectorText.setOutlineEnabled(!isEnabled);
-            setBtnState(!isEnabled);
-            renderEffectAndApplyTexture();
+            if (vectorTextLayer) {
+                const isEnabled = vectorTextLayer.outline()?.include || false;
+                if (isEnabled) {
+                    vectorTextLayer.removeOutline();
+                } else {
+                    vectorTextLayer.addOutline();
+                }
+                setBtnState(!isEnabled);
+                renderEffectAndApplyTexture();
+            }
         });
     }
 
@@ -496,16 +500,49 @@ const setupVectorTextUi = () => {
     }
 };
 
-materialsReady.then(() => {
-    // Initialize default effect and apply
-    if (vectorText) {
-        vectorText.addNoneEffect();
+materialsReady.then(async () => {
+    // Initialize WrapviewVectorSvgTextLayer
+    const panel = currentPanel();
+    if (!panel) {
+        console.error('Front body panel not found');
+        return;
+    }
+
+    const size = panel.settings.build?.parameters?.size || 2048;
+    
+    vectorTextLayer = new WrapviewVectorSvgTextLayer(WrapviewUtils.guid(), {
+        text: 'Hello World',
+        fontFamily: 'ABeeZee',
+        fontVariant: 500,
+        fontSize: 48,
+        fontColor: '#ffffff',
+        size: { width: 480, height: 480 },
+        pivot: { x: 0.5, y: 0.5 },
+        position: { x: size / 2, y: size / 2 },
+        angle: 0,
+        effect: 'none',
+        outline: {
+            include: false,
+            color: '#000000',
+            thickness: 2
+        }
+    });
+
+    try {
+        // Load the layer with initial settings
+        await vectorTextLayer.load(null, panel);
         currentEffect = 'none';
+        
+        // Setup UI after layer is ready
+        setupVectorTextUi();
+        
+        // Initial texture application
         setTimeout(() => {
             updateGarmentTexture();
         }, 500);
+    } catch (error) {
+        console.error('Failed to initialize vector text layer:', error);
     }
-    setupVectorTextUi();
 }).catch((error) => {
     console.error('Failed to initialize materials:', error);
 });
