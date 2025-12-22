@@ -1,10 +1,9 @@
-const GOOGLE_FONTS_API_KEY = 'AIzaSyDwE8sM8Ts9SE1ZFkBqEtHNX_3MIwnKNTw';
 
-export async function getFontTtfUrl({ family, size }) {
+export async function getFontTtfUrl({ key, family, size }) {
     console.log('Fetching font:', family, size);
-    if (!GOOGLE_FONTS_API_KEY) throw new Error('Missing GOOGLE_FONTS_API_KEY');
+    if (!key) throw new Error('Missing GOOGLE_FONTS_API_KEY');
     if (!family) throw new Error('family is required');
-    const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?family=${family}&key=${encodeURIComponent(GOOGLE_FONTS_API_KEY)}&sort=alpha`);
+    const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?family=${family}&key=${encodeURIComponent(key)}&sort=alpha`);
 
     if (!res.ok) throw new Error(`Webfonts API error: ${res.status} ${res.statusText}`);
     const data = await res.json();
@@ -23,6 +22,7 @@ class WrapviewVectorEffect {
         this.svgElement = null;
         this.root = null;
         this.SVG_SIZE = 600;
+        this.FONT_SIZE = 100
         this.BASELINE_OFFSET = 80;
         this._applyEffect();
     }
@@ -50,51 +50,12 @@ class WrapviewVectorEffect {
         }
     }
 
-    _applyNoneEffect() {
-        const draw = SVG(this.textSvg).addClass('Main');
-        draw.size(this.SVG_SIZE, this.SVG_SIZE);
-        draw.id('viewportSvg');
-        this.svgElement = draw.node;
-        this.root = draw;
-        return this.textSvg;
-    }
-
-    _applyArchEffect() {
-        const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${groupHeight/4} C${this.SVG_SIZE / 8},50 ${this.SVG_SIZE},50 ${this.SVG_SIZE},${groupHeight/4}`;
-        this._path = pathD;
-        this._warpText(group, groupHeight, groupWidth, 'arch');
-    }
-
-    _applyFlagEffect() {
-        const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-50 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
-        this._path = pathD;
-        this._warpText(group, groupHeight, groupWidth, 'flag');
-    }
-
-    _applyBulgeEffect() {
-        const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0`;
-        this._path = pathD;
-        this._warpText(group, groupHeight, groupWidth, 'bulge');
-
-    }
-
-    _applyPinchEffect() {
-        const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
-        this._path = pathD;
-        this._warpText(group, groupHeight, groupWidth, 'pinch');
-
-    }
-
     _getTextGroup() {
         if (!this.textSvg) return null;
         const draw = SVG(this.textSvg).addClass('Main');
         draw.size(this.SVG_SIZE, this.SVG_SIZE);
         draw.id('viewportSvg');
-        
+
         this.svgElement = draw.node;
         this.root = draw;
 
@@ -108,10 +69,45 @@ class WrapviewVectorEffect {
         }
     }
 
-    _warpText(group, groupHeight, groupWidth, effectType) {
+    _applyNoneEffect() {
+        const draw = SVG(this.textSvg).addClass('Main');
+        draw.size(this.SVG_SIZE, this.SVG_SIZE);
+        draw.id('viewportSvg');
+        this.svgElement = draw.node;
+        this.root = draw;
+        return this.textSvg;
+    }
+
+    _applyArchEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,${this.FONT_SIZE} C${this.FONT_SIZE / 2},20 ${this.SVG_SIZE},20 ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'arch');
+    }
+
+    _applyFlagEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'flag');
+    }
+
+    _applyBulgeEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'bulge');
+
+    }
+
+    _applyPinchEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'pinch');
+
+    }
+
+    _warpText(pathD, group, groupHeight, groupWidth, effectType) {
         try {
             if (effectType !== 'none') {
-          
+                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: 'none' });
                 const warp = new Warp(group ? group.node : this.root.node);
                 warp.interpolate(20);
                 warp.transform(([x, y]) => [x, this._getWarpedY(x, y, groupHeight, groupWidth, effectType)]);
@@ -125,6 +121,7 @@ class WrapviewVectorEffect {
         if (!Number.isFinite(x) || !Number.isFinite(y)) return y;
         const normalizedX = x / w;
         const baseWarp = Math.sin(normalizedX * Math.PI) * (h / 4) * intensity;
+        console.log('baseWarp:', baseWarp, this._path.pointAt(x));
         const normalizedY = (y - (h / 2)) / (h / 2);
         switch (effectType) {
             case 'bulge':
@@ -132,9 +129,9 @@ class WrapviewVectorEffect {
             case 'pinch':
                 return y - (normalizedY * baseWarp);
             case 'arch':
-                return y;
+                return y + this._path.pointAt(x).y - this.BASELINE_OFFSET;
             case 'flag':
-                return y + baseWarp - 80;
+                return y + this._path.pointAt(x).y - this.BASELINE_OFFSET;
             default:
                 return y;
         }

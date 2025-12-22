@@ -1203,6 +1203,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         this._vectorText = null;
         this._effect = null;
         this.SVG_SIZE = 600;
+        this.googleFontAPIKey = ''
     }
 
     defaults() {
@@ -1237,6 +1238,10 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             },
             scale: 1.0
         };
+    }
+
+    setApiKey(key) {
+        this.googleFontAPIKey = key
     }
 
     name() {
@@ -1513,6 +1518,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 return;
             }
             const ttfUrl = await getFontTtfUrl({
+                key: this.googleFontAPIKey,
                 family: this.settings.fontFamily,
                 size: this.settings.fontVariant
             });
