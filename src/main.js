@@ -29,7 +29,7 @@ const EFFECT_BUTTONS_CONFIG = [
     { id: 'apply-none-effect-btn', effect: 'none' },
     { id: 'apply-arch-effect-btn', effect: 'arch' },
     { id: 'apply-flag-effect-btn', effect: 'flag' },
-    { id: 'apply-bulge-effect-btn', effect: 'bulge' },
+    { id: 'apply-buldge-effect-btn', effect: 'buldge' },
     { id: 'apply-pinch-effect-btn', effect: 'pinch' },
     { id: 'apply-valley-effect-btn', effect: 'valley' },
     { id: 'apply-bridge-effect-btn', effect: 'bridge' },

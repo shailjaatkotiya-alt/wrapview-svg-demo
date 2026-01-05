@@ -71,46 +71,44 @@ class WrapviewVectorEffect {
 
     _applyArchEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${this.FONT_SIZE} C${this.FONT_SIZE / 2},40 ${this.SVG_SIZE},40 ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        const pathD = `M0,0 Q${groupWidth / 2},-${this.FONT_SIZE} ${groupWidth},0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'arch');
     }
 
     _applyFlagEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
+        const pathD = `M0,0 Q${groupWidth / 4},-${this.FONT_SIZE / 2} ${groupWidth / 2},0 T${groupWidth}, 0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'flag');
     }
 
     _applyBuldgeEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0`;
+        const pathD = `M0,0 Q${groupWidth / 4},-${this.FONT_SIZE / 2} ${groupWidth / 2},0 T${groupWidth}, 0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'buldge');
-
     }
 
     _applyPinchEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0 T${this.SVG_SIZE}, 0`;
+        const pathD = `M0,0 Q${groupWidth / 4},-${this.FONT_SIZE / 2} ${groupWidth / 2},0 T${groupWidth}, 0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'pinch');
-
     }
 
     _applyValleyEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${this.FONT_SIZE} Q${this.SVG_SIZE / 2},${this.FONT_SIZE + 50} ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        const pathD = `M0,0 Q${groupWidth / 2},${this.FONT_SIZE} ${groupWidth},0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'valley');
     }
 
     _applyBridgeEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${this.FONT_SIZE} Q${this.SVG_SIZE / 2},${this.FONT_SIZE - 50} ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        const pathD = `M0,0 Q${groupWidth / 2},-${this.FONT_SIZE} ${groupWidth},0`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'bridge');
     }
 
     _warpText(pathD, group, groupHeight, groupWidth, effectType) {
         try {
             if (effectType !== 'none') {
-                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: '#00ff00' });
+                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: 'none' });
                 const warp = new Warp(group ? group.node : this.root.node);
                 warp.interpolate(20);
                 warp.transform(([x, y]) => [x, this._getWarpedY(x, y, groupHeight, groupWidth, effectType)]);
@@ -133,13 +131,13 @@ class WrapviewVectorEffect {
             case 'pinch':
                 return y - (normalizedY * baseWarp);
             case 'arch':
-                return y + this._path.pointAt(x).y - (this.BASELINE_OFFSET);
+                return y + this._path.pointAt(x).y - 80;
             case 'flag':
-                return y + this._path.pointAt(x).y - (this.BASELINE_OFFSET);
+                return y + this._path.pointAt(x).y - 80;
             case 'valley':
-                return y + ((y - h) / h) * baseWarp;
-            case 'bridge':
                 return y - ((y - h) / h) * baseWarp;
+            case 'bridge':
+                return y + ((y - h) / h) * baseWarp;
             default:
                 return y;
         }
