@@ -8,7 +8,7 @@ class WrapviewVectorEffect {
         this.root = null;
         this.SVG_SIZE = 600;
         this.FONT_SIZE = 100
-        this.BASELINE_OFFSET = 80;
+        this.BASELINE_OFFSET = 100;
         this._applyEffect();
     }
 
@@ -23,11 +23,17 @@ class WrapviewVectorEffect {
             case 'flag':
                 this._applyFlagEffect();
                 break;
-            case 'bulge':
-                this._applyBulgeEffect();
+            case 'buldge':
+                this._applyBuldgeEffect();
                 break;
             case 'pinch':
                 this._applyPinchEffect();
+                break;
+            case 'valley':
+                this._applyValleyEffect();
+                break;
+            case 'bridge':
+                this._applyBridgeEffect();
                 break;
             default:
                 console.warn(`Unknown effect: ${this.effectName}, using 'none'`);
@@ -65,7 +71,7 @@ class WrapviewVectorEffect {
 
     _applyArchEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
-        const pathD = `M0,${this.FONT_SIZE} C${this.FONT_SIZE / 2},20 ${this.SVG_SIZE},20 ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        const pathD = `M0,${this.FONT_SIZE} C${this.FONT_SIZE / 2},40 ${this.SVG_SIZE},40 ${this.SVG_SIZE},${this.FONT_SIZE}`;
         this._warpText(pathD, group, groupHeight, groupWidth, 'arch');
     }
 
@@ -75,10 +81,10 @@ class WrapviewVectorEffect {
         this._warpText(pathD, group, groupHeight, groupWidth, 'flag');
     }
 
-    _applyBulgeEffect() {
+    _applyBuldgeEffect() {
         const { group, groupHeight, groupWidth } = this._getTextGroup();
         const pathD = `M0,0 Q${this.SVG_SIZE / 4},-25 ${this.SVG_SIZE / 2},0`;
-        this._warpText(pathD, group, groupHeight, groupWidth, 'bulge');
+        this._warpText(pathD, group, groupHeight, groupWidth, 'buldge');
 
     }
 
@@ -89,10 +95,22 @@ class WrapviewVectorEffect {
 
     }
 
+    _applyValleyEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,${this.FONT_SIZE} Q${this.SVG_SIZE / 2},${this.FONT_SIZE + 50} ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'valley');
+    }
+
+    _applyBridgeEffect() {
+        const { group, groupHeight, groupWidth } = this._getTextGroup();
+        const pathD = `M0,${this.FONT_SIZE} Q${this.SVG_SIZE / 2},${this.FONT_SIZE - 50} ${this.SVG_SIZE},${this.FONT_SIZE}`;
+        this._warpText(pathD, group, groupHeight, groupWidth, 'bridge');
+    }
+
     _warpText(pathD, group, groupHeight, groupWidth, effectType) {
         try {
             if (effectType !== 'none') {
-                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: 'none' });
+                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: '#00ff00' });
                 const warp = new Warp(group ? group.node : this.root.node);
                 warp.interpolate(20);
                 warp.transform(([x, y]) => [x, this._getWarpedY(x, y, groupHeight, groupWidth, effectType)]);
@@ -106,17 +124,22 @@ class WrapviewVectorEffect {
         if (!Number.isFinite(x) || !Number.isFinite(y)) return y;
         const normalizedX = x / w;
         const baseWarp = Math.sin(normalizedX * Math.PI) * (h / 4) * intensity;
-        console.log('baseWarp:', baseWarp, this._path.pointAt(x));
         const normalizedY = (y - (h / 2)) / (h / 2);
+        // Formula: (y - h) / h where values range from 0-1
+
         switch (effectType) {
-            case 'bulge':
+            case 'buldge':
                 return y + (normalizedY * baseWarp);
             case 'pinch':
                 return y - (normalizedY * baseWarp);
             case 'arch':
-                return y + this._path.pointAt(x).y - this.BASELINE_OFFSET;
+                return y + this._path.pointAt(x).y - (this.BASELINE_OFFSET);
             case 'flag':
-                return y + this._path.pointAt(x).y - this.BASELINE_OFFSET;
+                return y + this._path.pointAt(x).y - (this.BASELINE_OFFSET);
+            case 'valley':
+                return y + ((y - h) / h) * baseWarp;
+            case 'bridge':
+                return y - ((y - h) / h) * baseWarp;
             default:
                 return y;
         }

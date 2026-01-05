@@ -11,7 +11,6 @@ import { WrapviewUtils } from './Wrapview/WrapviewUtils.js';
 
 // Constants
 const TEXTURE_SIZE = 2048;
-const LAYER_SIZE = { width: 480, height: 480 };
 const MODEL_PATH = '/3001C_SMALL/3001C_SMALL_LOD0.glb';
 const TEXTURE_BASE_PATH = '/3001C_SMALL/textures';
 
@@ -32,6 +31,8 @@ const EFFECT_BUTTONS_CONFIG = [
     { id: 'apply-flag-effect-btn', effect: 'flag' },
     { id: 'apply-bulge-effect-btn', effect: 'bulge' },
     { id: 'apply-pinch-effect-btn', effect: 'pinch' },
+    { id: 'apply-valley-effect-btn', effect: 'valley' },
+    { id: 'apply-bridge-effect-btn', effect: 'bridge' },
 ];
 
 WrapviewSettings.init();
@@ -259,7 +260,7 @@ const updateGarmentTexture = async () => {
         }
 
         const dataUrl = vectorTextLayer._canvas.toDataURL("image/png");
-        debouncedApplyTexture(dataUrl);
+        applyTextTextureToPanels(dataUrl);
     } catch (error) {
         console.error('Error applying SVG viewport texture:', error);
     }
@@ -269,7 +270,8 @@ const renderEffectAndApplyTexture = async () => {
     if (!vectorTextLayer) return;
 
     try {
-        vectorTextLayer.setEffect(currentEffect);
+        await vectorTextLayer.setEffect(currentEffect);
+        // Wait for the canvas to be updated
         await new Promise(resolve => setTimeout(resolve, 100));
         updateGarmentTexture();
     } catch (error) {
@@ -336,7 +338,7 @@ const setupVectorTextUi = () => {
     };
 
     // Setup color inputs
-    createColorInputHandler('fill-color-input', 'setFontColor');
+    createColorInputHandler('fill-color-input', 'setColor');
     createColorInputHandler('outline-color-input', 'setOutlineColor');
     createNumberInputHandler('outline-width-input', 'setOutlineThickness');
 
@@ -347,10 +349,10 @@ const setupVectorTextUi = () => {
             toggleOutlineBtn.dataset.enabled = String(!!enabled);
             toggleOutlineBtn.textContent = enabled ? 'Outline On' : 'Outline Off';
         };
-        setBtnState(vectorTextLayer?.outline()?.include || false);
+        setBtnState(vectorTextLayer?.outline()?.includes || false);
         toggleOutlineBtn.addEventListener('click', () => {
             if (vectorTextLayer) {
-                const isEnabled = vectorTextLayer.outline()?.include || false;
+                const isEnabled = vectorTextLayer.outline()?.includes || false;
                 isEnabled ? vectorTextLayer.removeOutline() : vectorTextLayer.addOutline();
                 setBtnState(!isEnabled);
                 renderEffectAndApplyTexture();
@@ -379,28 +381,47 @@ materialsReady.then(async () => {
 
     const size = panel.settings.build?.parameters?.size || 2048;
 
+    // Create the vector text layer with basic settings
     vectorTextLayer = new WrapviewVectorSvgTextLayer(WrapviewUtils.guid(), {
-        text: 'Hello World',
-        fontFamily: 'ABeeZee',
-        fontVariant: 500,
-        fontSize: 48,
-        fontColor: '#ffffff',
         size: { width: 480, height: 480 },
         pivot: { x: 0.5, y: 0.5 },
         position: { x: size / 2, y: size / 2 },
         angle: 0,
-        effect: 'none',
+    });
+
+    vectorTextLayer.setApiKey('AIzaSyDwE8sM8Ts9SE1ZFkBqEtHNX_3MIwnKNTw');
+
+    // Initial settings to apply - these require the material (panel) for WrapviewParameter creation
+    const initialSettings = {
+        text: 'Hello World',
+        font: {
+            family: 'ABeeZee',
+            variant: 500,
+            source: 'google'
+        },
+        fontSize: 48,
+        color: '#ffffff',
+        size: { width: 480, height: 480 },
+        pivot: { x: 0.5, y: 0.5 },
+        position: { x: size / 2, y: size / 2 },
+        angle: 0,
+        effect: {
+            effectName: 'none',
+            effectProperties: {
+                intensity: 0,
+                characterSpacing: 1
+            }
+        },
         outline: {
-            include: false,
+            includes: false,
             color: '#000000',
             thickness: 2
         },
-    });
-
-    vectorTextLayer.setApiKey('')
+    };
 
     try {
-        await vectorTextLayer.load(null, panel);
+        // Use applySettings to initialize the layer with all settings and the panel (material)
+        await vectorTextLayer.applySettings(initialSettings, panel);
         currentEffect = 'none';
         setupVectorTextUi();
         setTimeout(() => {

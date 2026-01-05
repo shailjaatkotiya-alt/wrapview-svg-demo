@@ -1201,26 +1201,26 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         this._canvas = null;
         this._image = null;
         this._vectorText = null;
-        this._effect = null;
-        this.SVG_SIZE = 600;
+        this._vectorEffect = null;
+        this._bounds = null;
+        this._svg_size = 600;
         this.googleFontAPIKey = ''
+        this._text = null
     }
 
     defaults() {
         return {
-            text: "Vector SVG Text",
-            fontFamily: null,
-            fontVariant: 500,
+            font: null,
             fontSize: 48,
-            fontColor: '#ffffff',
+            color: null,
             size: {
-                height: 480,
-                width: 480
+                width: 480,
+                height: 480
             },
             outline: {
-                include: false,
-                color: '#000000',
-                thickness: 2
+                includes: false,
+                thickness: 1,
+                color: null
             },
             pivot: {
                 x: 0,
@@ -1231,12 +1231,14 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 y: 0
             },
             angle: 0,
-            effect: 'none',
-            effectProperties: {
-                intensity: 1,
-                characterSpacing: 0
-            },
-            scale: 1.0
+            scale: 1.0,
+            effect: {
+                effectName: 'none',
+                effectProperties: {
+                    intensity: 0,
+                    characterSpacing: 1
+                }
+            }
         };
     }
 
@@ -1272,48 +1274,137 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         };
     }
 
-    async applySettings(s, m) {
-        // Apply text and font settings
-        this.settings.text = s.text !== undefined ? s.text : this.settings.text;
-        this.settings.fontFamily = s.fontFamily !== undefined ? s.fontFamily : this.settings.fontFamily;
-        this.settings.fontVariant = s.fontVariant !== undefined ? s.fontVariant : this.settings.fontVariant;
-        this.settings.fontSize = s.fontSize !== undefined ? s.fontSize : this.settings.fontSize;
-        this.settings.fontColor = s.fontColor !== undefined ? s.fontColor : this.settings.fontColor;
+    async applySettings(s, m = null) {
+        const textRelatedProps = ['text', 'font', 'fontSize', 'color', 'outline'];
+        const changedProps = Object.keys(s);
+        const hasTextRelatedChanges = changedProps.some(key => textRelatedProps.includes(key));
+        const hasEffectChanges = s.hasOwnProperty('effect');
 
-        // Apply size, position, pivot, and angle
-        if (s.size) {
-            this.settings.size.width = s.size.width !== undefined ? s.size.width : this.settings.size.width;
-            this.settings.size.height = s.size.height !== undefined ? s.size.height : this.settings.size.height;
-        }
-        if (s.position) {
-            this.settings.position.x = s.position.x !== undefined ? s.position.x : this.settings.position.x;
-            this.settings.position.y = s.position.y !== undefined ? s.position.y : this.settings.position.y;
-        }
-        if (s.pivot) {
-            this.settings.pivot.x = s.pivot.x !== undefined ? s.pivot.x : this.settings.pivot.x;
-            this.settings.pivot.y = s.pivot.y !== undefined ? s.pivot.y : this.settings.pivot.y;
-        }
-        this.settings.angle = s.angle !== undefined ? s.angle : this.settings.angle;
-        this.settings.scale = s.scale !== undefined ? s.scale : this.settings.scale;
+        // Helper function to normalize parameter value to WrapviewParameter format
+        const normalizeParamValue = (val) => {
+            if (typeof val === 'string' || typeof val === 'number') {
+                return { type: 'fixed', value: val };
+            }
+            return val;
+        };
 
-        // Apply outline settings
-        if (s.outline) {
-            this._ensureOutline();
-            this.settings.outline.include = s.outline.include !== undefined ? s.outline.include : this.settings.outline.include;
-            this.settings.outline.color = s.outline.color !== undefined ? s.outline.color : this.settings.outline.color;
-            this.settings.outline.thickness = s.outline.thickness !== undefined ? s.outline.thickness : this.settings.outline.thickness;
+        // Apply text
+        if (s.hasOwnProperty('text')) {
+            if (s.text) {
+                const textValue = normalizeParamValue(s.text);
+                if (this._text === null && m) {
+                    var text = new WrapviewParameter(m, 'vectorText');
+                    text.set(textValue);
+                    this._text = text;
+                } else if (this._text) {
+                    this._text.set(textValue);
+                }
+            }
         }
 
-        // Apply effect settings
-        this.settings.effect = s.effect !== undefined ? s.effect : this.settings.effect;
-        if (s.effectProperties) {
-            this.settings.effectProperties.intensity = s.effectProperties.intensity !== undefined ? s.effectProperties.intensity : this.settings.effectProperties.intensity;
-            this.settings.effectProperties.characterSpacing = s.effectProperties.characterSpacing !== undefined ? s.effectProperties.characterSpacing : this.settings.effectProperties.characterSpacing;
+        // Apply font
+        if (s.hasOwnProperty('font')) {
+            if (s.font === null) {
+                this.settings.font = null;
+            } else if (s.font) {
+                this.settings.font = new WrapviewFont({
+                    family: s.font.family || s.font.name,
+                    source: s.font.source,
+                    variant: s.font.variant
+                });
+            }
         }
 
-        // Render vector text with updated settings
-        await this._createVectorText();
-        this._loaded = true;
+        // Apply fontSize
+        if (s.hasOwnProperty('fontSize')) {
+            this.settings.fontSize = s.fontSize;
+        }
+
+        // Apply color
+        if (s.hasOwnProperty('color')) {
+            if (s.color === null) {
+                this.settings.color = null;
+            } else if (s.color && m) {
+                const colorValue = normalizeParamValue(s.color);
+                var c = new WrapviewParameter(m, 'vectorTextColor');
+                c.set(colorValue);
+                this.settings.color = c;
+            }
+        }
+
+        // Apply size
+        if (s.hasOwnProperty('size') && s.size) {
+            this.settings.size = s.size;
+        }
+
+        // Apply position
+        if (s.hasOwnProperty('position') && s.position) {
+            this.settings.position = s.position;
+        }
+
+        // Apply pivot
+        if (s.hasOwnProperty('pivot') && s.pivot) {
+            this.settings.pivot = s.pivot;
+        }
+
+        // Apply angle and scale
+        if (s.hasOwnProperty('angle')) {
+            this.settings.angle = s.angle;
+        }
+        if (s.hasOwnProperty('scale')) {
+            this.settings.scale = s.scale;
+        }
+
+        // Apply outline
+        if (s.hasOwnProperty('outline') && s.outline) {
+            if (s.outline.hasOwnProperty('includes')) {
+                this.settings.outline.includes = s.outline.includes;
+            }
+            if (s.outline.hasOwnProperty('thickness')) {
+                this.settings.outline.thickness = s.outline.thickness;
+            }
+            if (s.outline.hasOwnProperty('color')) {
+                if (s.outline.color === null) {
+                    this.settings.outline.color = null;
+                } else if (s.outline.color && m) {
+                    const outlineColorValue = normalizeParamValue(s.outline.color);
+                    var oc = new WrapviewParameter(m, 'vectorTextOutlineColor');
+                    oc.set(outlineColorValue);
+                    this.settings.outline.color = oc;
+                }
+            }
+        }
+
+        // Apply effect
+        if (s.hasOwnProperty('effect') && s.effect) {
+            if (s.effect.hasOwnProperty('effectName')) {
+                this.settings.effect.effectName = s.effect.effectName;
+            }
+            if (s.effect.effectProperties) {
+                if (s.effect.effectProperties.hasOwnProperty('intensity')) {
+                    this.settings.effect.effectProperties.intensity = s.effect.effectProperties.intensity;
+                }
+                if (s.effect.effectProperties.hasOwnProperty('characterSpacing')) {
+                    this.settings.effect.effectProperties.characterSpacing = s.effect.effectProperties.characterSpacing;
+                }
+            }
+        }
+
+        // Render based on what changed
+        try {
+            if (hasTextRelatedChanges) {
+                // _createVectorText handles _applyEffect and _renderSvgToCanvas internally
+                await this._createVectorText();
+            } else if (hasEffectChanges) {
+                if (this._vectorText) {
+                    this._applyEffect(this.settings.effect.effectName);
+                    await this._renderSvgToCanvas();
+                }
+            }
+            this._loaded = true;
+        } catch (error) {
+            console.error('Failed to apply settings:', error);
+        }
     }
 
     _ensureOutline() {
@@ -1323,15 +1414,25 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     }
 
     setText(textValue) {
-        const oldValue = this.settings.text;
-        this.settings.text = textValue;
+        const oldValue = this._text ? this._text.value() : '';
+        if (this._text) {
+            this._text.setValue(textValue);
+        }
         if (oldValue !== textValue && this._loaded) {
-            this._update({ text: textValue });
+            this.applySettings({ text: textValue });
         }
     }
 
     getText() {
-        return this.settings.text || '';
+        return this._text ? this._text.value() : '';
+    }
+
+    color() {
+        return this.settings.color;
+    }
+
+    setColorParameter(color) {
+        this.settings.color = color;
     }
 
     outline() {
@@ -1341,20 +1442,29 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     setOutline(o) {
         this.settings.outline = o;
         if (this._loaded) {
-            this._update({ outline: o });
+            this.applySettings({ outline: o });
         }
     }
 
     outlineColor() {
-        return this.settings.outline?.color || this.defaults().outline.color;
+        return this.settings.outline?.color;
     }
 
-    setOutlineColor(colorValue) {
+    setOutlineColorParameter(outlineColor) {
         this._ensureOutline();
-        const oldValue = this.settings.outline.color;
-        this.settings.outline.color = colorValue;
-        if (oldValue !== colorValue && this._loaded) {
-            this._update({ outline: this.settings.outline });
+        this.settings.outline.color = outlineColor;
+    }
+
+    setOutlineColor(colorValue, descriptor) {
+        this._ensureOutline();
+        if (this.settings.outline.color) {
+            this.settings.outline.color.setValue(colorValue);
+            if (descriptor) {
+                this.settings.outline.color.setDescriptor(descriptor);
+            }
+            if (this._loaded) {
+                this.applySettings({ outline: this.settings.outline });
+            }
         }
     }
 
@@ -1363,25 +1473,25 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         const oldValue = this.settings.outline.thickness;
         this.settings.outline.thickness = t;
         if (oldValue !== t && this._loaded) {
-            this._update({ outline: this.settings.outline });
+            this.applySettings({ outline: this.settings.outline });
         }
     }
 
     addOutline() {
         this._ensureOutline();
-        const shouldUpdate = !this.settings.outline.include && this._loaded;
-        this.settings.outline.include = true;
+        const shouldUpdate = !this.settings.outline.includes && this._loaded;
+        this.settings.outline.includes = true;
         if (shouldUpdate) {
-            this._update({ outline: this.settings.outline });
+            this.applySettings({ outline: this.settings.outline });
         }
     }
 
     removeOutline() {
         this._ensureOutline();
-        const shouldUpdate = this.settings.outline.include && this._loaded;
-        this.settings.outline.include = false;
+        const shouldUpdate = this.settings.outline.includes && this._loaded;
+        this.settings.outline.includes = false;
         if (shouldUpdate) {
-            this._update({ outline: this.settings.outline });
+            this.applySettings({ outline: this.settings.outline });
         }
     }
 
@@ -1389,44 +1499,38 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         const oldValue = this.settings.fontSize;
         this.settings.fontSize = s;
         if (oldValue !== s && this._loaded) {
-            this._update({ fontSize: s });
+            this.applySettings({ fontSize: s });
         }
     }
 
     setFontFamily(family) {
-        const oldValue = this.settings.fontFamily;
-        this.settings.fontFamily = family;
+        if (!this.settings.font) return;
+        const oldValue = this.settings.font.family;
+        this.settings.font.family = family;
         if (oldValue !== family && this._loaded) {
-            this._update({ fontFamily: family });
+            this.applySettings({ font: this.settings.font });
         }
     }
 
     setFontVariant(variant) {
-        const oldValue = this.settings.fontVariant;
-        this.settings.fontVariant = variant;
+        if (!this.settings.font) return;
+        const oldValue = this.settings.font.variant;
+        this.settings.font.variant = variant;
         if (oldValue !== variant && this._loaded) {
-            this._update({ fontVariant: variant });
+            this.applySettings({ font: this.settings.font });
         }
     }
 
-    setFontColor(colorValue) {
-        const oldValue = this.settings.fontColor;
-        this.settings.fontColor = colorValue;
-        if (oldValue !== colorValue && this._loaded) {
-            this._update({ fontColor: colorValue });
+    setColor(colorValue, descriptor) {
+        if (this.settings.color) {
+            this.settings.color.setValue(colorValue);
+            if (descriptor) {
+                this.settings.color.setDescriptor(descriptor);
+            }
+            if (this._loaded) {
+                this.applySettings({ color: this.settings.color });
+            }
         }
-    }
-
-    getFontFamily() {
-        return this.settings.fontFamily;
-    }
-
-    getFontVariant() {
-        return this.settings.fontVariant;
-    }
-
-    getFontColor() {
-        return this.settings.fontColor;
     }
 
     setPivot(p) {
@@ -1439,78 +1543,71 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         if (o.height !== undefined) this.settings.size.height = o.height;
     }
 
-    async _update(changes) {
-        const textRelatedProps = ['text', 'fontFamily', 'fontVariant', 'fontSize', 'fontColor', 'outline'];
-        const changedTextProps = Object.keys(changes).filter(key => textRelatedProps.includes(key));
-        const effectChanged = changes.hasOwnProperty('effect');
-
-        try {
-            if (changedTextProps.length > 0) {
-                await this._createVectorText();
-                if (effectChanged) {
-                    this._applyEffect(changes.effect);
-                } else {
-                    this._applyEffect(this.settings.effect);
-                }
-                await this._renderSvgToCanvas();
-            } else if (effectChanged) {
-                if (this._vectorText) {
-                    this._applyEffect(changes.effect);
-                    await this._renderSvgToCanvas();
-                }
-            }
-        } catch (error) {
-            console.error('Failed to update vector text layer:', error);
-        }
-    }
-
     _applyEffect(effectName) {
         if (!this._vectorText) {
             console.warn('Vector text not created yet, cannot apply effect');
             return;
         }
 
-        this._effect = new WrapviewVectorEffect(
+        this._vectorEffect = new WrapviewVectorEffect(
             this._vectorText,
             effectName || 'none',
-            this.settings.effectProperties
+            this.settings.effect.effectProperties
         );
     }
 
     setEffect(effect) {
-        const oldEffect = this.settings.effect;
-        this.settings.effect = effect;
+        const oldEffect = this.settings.effect.effectName;
+        this.settings.effect.effectName = effect;
         if (oldEffect !== effect && this._loaded) {
-            this._update({ effect: effect });
+            this.applySettings({ effect: this.settings.effect });
         }
     }
 
     _getEffectSvgString() {
-        if (!this._effect || !this._effect.svgElement) {
+        if (!this._vectorEffect || !this._vectorEffect.svgElement) {
             return null;
         }
-        return new XMLSerializer().serializeToString(this._effect.svgElement);
+        return new XMLSerializer().serializeToString(this._vectorEffect.svgElement);
     }
 
     getEffectSvgDataUrl() {
         const svgString = this._getEffectSvgString();
-        if (!svgString) return null;
-        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+        if (!svgString) {
+            console.warn('No SVG string available for data URL');
+            return null;
+        }
+        try {
+            // Ensure the SVG has proper namespace and dimensions
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+            const svgElement = svgDoc.documentElement;
+            
+            // Check for parsing errors
+            if (svgElement.querySelector('parsererror')) {
+                console.error('SVG parsing error:', svgElement.querySelector('parsererror').textContent);
+                return null;
+            }
+            
+            // Ensure width and height are set
+            if (!svgElement.hasAttribute('width')) {
+                svgElement.setAttribute('width', this._svg_size);
+            }
+            if (!svgElement.hasAttribute('height')) {
+                svgElement.setAttribute('height', this._svg_size);
+            }
+            if (!svgElement.hasAttribute('xmlns')) {
+                svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            }
+            
+            const correctedSvgString = new XMLSerializer().serializeToString(svgElement);
+            return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(correctedSvgString)}`;
+        } catch (error) {
+            console.error('Error creating SVG data URL:', error);
+            return null;
+        }
     }
 
-    async getFontTtfUrl({ key, family, size }) {
-        console.log('Fetching font:', family, size);
-        if (!key) throw new Error('Missing GOOGLE_FONTS_API_KEY');
-        if (!family) throw new Error('family is required');
-        const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?family=${family}&key=${encodeURIComponent(key)}&sort=alpha`);
-
-        if (!res.ok) throw new Error(`Webfonts API error: ${res.status} ${res.statusText}`);
-        const data = await res.json();
-
-        const url = data.items[0].files[size] ? data.items[0].files[size] : data.items[0].files["regular"];
-        if (!url) throw new Error(`No URL for variant ${size}`);
-        return url;
-    }
 
     async applyEffectToSvgLayer(svgLayer) {
         if (!svgLayer || typeof svgLayer.updateFromDataUrl !== 'function') return Promise.resolve();
@@ -1523,23 +1620,19 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
 
     async _createVectorText() {
         try {
-            if (!this.settings.text) {
+            if (!this._text) {
                 console.warn('No text provided for vector SVG text layer');
                 return;
             }
-            if (!this.settings.fontFamily || !this.settings.fontVariant) {
+            if (!this.settings.font || !this.settings.font.family || !this.settings.font.variant) {
                 console.warn('Font family and variant are required for vector text rendering');
                 return;
             }
-            const ttfUrl = await this.getFontTtfUrl({
-                key: this.googleFontAPIKey,
-                family: this.settings.fontFamily,
-                size: this.settings.fontVariant
-            });
+            const ttfUrl = await this.settings.font.getFontUrl(this.googleFontAPIKey);
 
             this._vectorText = await this._renderVectorTextSvg(ttfUrl);
             if (this._vectorText) {
-                this._applyEffect(this.settings.effect || 'none');
+                this._applyEffect(this.settings.effect.effectName || 'none');
                 await this._renderSvgToCanvas();
             }
 
@@ -1563,15 +1656,15 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                 try {
                     const textModel = new makerjs.models.Text(
                         font,
-                        this.settings.text,
+                        this._text.value(),
                         this.settings.fontSize,
                         false,
                         false
                     );
                     const svgTextElement = makerjs.exporter.toSVG(textModel, {
-                        fill: this.settings.fontColor,
-                        stroke: this.settings.outline?.color || this.defaults().outline.color,
-                        strokeWidth: this.settings.outline?.include ? this.settings.outline.thickness : 0,
+                        fill: this.settings.color ? this.settings.color.value() : '#ffffff',
+                        stroke: this.settings.outline?.color ? this.settings.outline.color.value() : '#000000',
+                        strokeWidth: this.settings.outline?.includes ? this.settings.outline.thickness : 0,
                         fillRule: 'evenodd',
                         scalingStroke: false
                     });
@@ -1583,31 +1676,186 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
         });
     }
 
-    load(data, material) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                if (!this.settings.fontFamily || !this.settings.fontVariant) {
-                    console.warn('Font family and variant are required for vector text rendering');
-                    reject(new Error('Font family and variant required'));
-                    return;
-                }
+    _lower(s, v) {
+        var a = _.cloneDeep(v);
+        if (this._bounds[s].x < a.x) {
+            a.x = this._bounds[s].x;
+        }
+        if (this._bounds[s].y < a.y) {
+            a.y = this._bounds[s].y;
+        }
+        return a;
+    }
 
-                if (data) {
-                    if (data.text) this.settings.text = data.text;
-                    if (data.fontFamily) this.settings.fontFamily = data.fontFamily;
-                    if (data.fontVariant) this.settings.fontVariant = data.fontVariant;
-                    if (data.fontSize) this.settings.fontSize = data.fontSize;
-                    if (data.fontColor) this.settings.fontColor = data.fontColor;
-                }
+    _greater(s, v) {
+        var a = _.cloneDeep(v);
+        if (this._bounds[s].x > a.x) {
+            a.x = this._bounds[s].x;
+        }
+        if (this._bounds[s].y > a.y) {
+            a.y = this._bounds[s].y;
+        }
+        return a;
+    }
 
-                await this._createVectorText();
-                this._loaded = true;
-                resolve();
-            } catch (error) {
-                console.error('Failed to load vector SVG text layer:', error);
-                reject(error);
-            }
+    isScale(point) {
+        if (!this._bounds) return false;
+
+        var min = this._bounds.rbc;
+        min = this._lower('rbb', min);
+
+        var max = this._bounds.rbc;
+        max = this._greater('rbb', max);
+
+        if (point.x > min.x && point.y > min.y && point.x < max.x && point.y < max.y) {
+            return true;
+        }
+        return false;
+    }
+
+    isRotation(point) {
+        if (!this._bounds) return false;
+
+        var min = this._bounds.rtc;
+        min = this._lower('rtb', min);
+        var max = this._bounds.rtc;
+        max = this._greater('rtb', max);
+        if (point.x > min.x && point.y > min.y && point.x < max.x && point.y < max.y) {
+            return true;
+        }
+        return false;
+    }
+
+    isDelete(point) {
+        if (!this._bounds) return false;
+
+        var min = this._bounds.ltc;
+        min = this._lower('ltb', min);
+        var max = this._bounds.ltc;
+        max = this._greater('ltb', max);
+        if (point.x > min.x && point.y > min.y && point.x < max.x && point.y < max.y) {
+            return true;
+        }
+        return false;
+    }
+
+    isInBounds(point) {
+        if (!this._bounds) return false;
+
+        var min = this._bounds.rb;
+        min = this._lower('rt', min);
+        min = this._lower('lb', min);
+        min = this._lower('lt', min);
+
+        var max = this._bounds.rb;
+        max = this._greater('rt', max);
+        max = this._greater('lb', max);
+        max = this._greater('lt', max);
+
+        if (point.x > min.x && point.y > min.y && point.x < max.x && point.y < max.y) {
+            return true;
+        }
+        return false;
+    }
+
+    _calculateBounds() {
+        var pivot = {
+            x: this.settings.position.x,
+            y: this.settings.position.y
+        };
+
+        var rightBottomCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width - (this.settings.size.width * this.settings.pivot.x),
+            y: this.settings.size.height - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
         });
+
+        var rightBottomBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width + 50 - (this.settings.size.width * this.settings.pivot.x),
+            y: this.settings.size.height + 50 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var rightBottomOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width + 100 - (this.settings.size.width * this.settings.pivot.x),
+            y: this.settings.size.height + 100 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var rightTopCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width - (this.settings.size.width * this.settings.pivot.x),
+            y: 0 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var rightTopBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width + 50 - (this.settings.size.width * this.settings.pivot.x),
+            y: -50 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var rightTopOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: this.settings.size.width + 100 - (this.settings.size.width * this.settings.pivot.x),
+            y: -100 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var leftTopCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: 0 - (this.settings.size.width * this.settings.pivot.x),
+            y: 0 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var leftTopBoundCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: -50 - (this.settings.size.width * this.settings.pivot.x),
+            y: -50 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var leftTopOuterCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: -100 - (this.settings.size.width * this.settings.pivot.x),
+            y: -100 - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        var leftBottomCorner = WrapviewUtils.shiftOrigin(WrapviewUtils.rotate({
+            x: 0 - (this.settings.size.width * this.settings.pivot.x),
+            y: this.settings.size.height - (this.settings.size.height * this.settings.pivot.y)
+        }, 2 * Math.PI - this.settings.angle), {
+            x: -pivot.x,
+            y: -pivot.y
+        });
+
+        this._bounds = {
+            rb: rightBottomCorner,
+            rbb: rightBottomBoundCorner,
+            rbc: rightBottomOuterCorner,
+            rt: rightTopCorner,
+            lb: leftBottomCorner,
+            ltb: leftTopBoundCorner,
+            ltc: leftTopOuterCorner,
+            lt: leftTopCorner,
+            rtb: rightTopBoundCorner,
+            rtc: rightTopOuterCorner
+        };
     }
 
     _renderSvgToCanvas() {
@@ -1625,12 +1873,12 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                     this._canvas = document.createElement('canvas');
                 }
 
-                this._canvas.width = this.SVG_SIZE;
-                this._canvas.height = this.SVG_SIZE;
+                this._canvas.width = this._svg_size;
+                this._canvas.height = this._svg_size;
                 const ctx = this._canvas.getContext('2d');
 
-                ctx.clearRect(0, 0, this.SVG_SIZE, this.SVG_SIZE);
-                ctx.drawImage(img, 0, 0, this.SVG_SIZE, this.SVG_SIZE);
+                ctx.clearRect(0, 0, this._svg_size, this._svg_size);
+                ctx.drawImage(img, 0, 0, this._svg_size, this._svg_size);
 
                 this._effectDataUrl = dataUrl;
                 this.setNeedsUpdate();
@@ -1640,8 +1888,10 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                     this._onUpdate(this._canvas);
                 }
             };
-            img.onerror = () => {
-                reject(new Error('Failed to render viewport SVG to canvas'));
+            img.onerror = (e) => {
+                console.error('Failed to load SVG data URL. SVG string length:', dataUrl ? dataUrl.length : 0);
+                console.error('Data URL preview:', dataUrl ? dataUrl.substring(0, 200) : 'null');
+                reject(new Error('Failed to load SVG data URL - check SVG format and content'));
             };
             img.src = dataUrl;
         });
@@ -1650,6 +1900,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
     draw(context) {
         if (!this._loaded || !this._canvas) return;
 
+        this._calculateBounds();
         context.save();
         context.translate(this.settings.position.x, this.settings.position.y);
         context.rotate(this.settings.angle);
