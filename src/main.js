@@ -28,6 +28,7 @@ const TEXTURED_MATERIALS_CONFIG = {
 const EFFECT_BUTTONS_CONFIG = [
     { id: 'apply-none-effect-btn', effect: 'none' },
     { id: 'apply-arch-effect-btn', effect: 'arch' },
+    { id: 'apply-circle-effect-btn', effect: 'circle' },
     { id: 'apply-flag-effect-btn', effect: 'flag' },
     { id: 'apply-buldge-effect-btn', effect: 'buldge' },
     { id: 'apply-pinch-effect-btn', effect: 'pinch' },
@@ -194,12 +195,12 @@ const applyTextTextureToPanels = async (dataUrl) => {
         return;
     }
 
-    try {
-        await materialsReady;
-    } catch (error) {
-        console.error('Materials failed to initialize', error);
-        return;
-    }
+    // try {
+    //     await materialsReady;
+    // } catch (error) {
+    //     console.error('Materials failed to initialize', error);
+    //     return;
+    // }
 
     const panel = currentPanel();
     if (!panel) {
@@ -216,7 +217,7 @@ const applyTextTextureToPanels = async (dataUrl) => {
         currentSvgLayer = new WrapviewSVGLayer(WrapviewUtils.guid(), {
             size: { width: 480, height: 480 },
             pivot: { x: 0.5, y: 0.5 },
-            position: { x: size / 2, y: size / 2 },
+            position: { x: size / 2, y:  size / 3 },
             angle: 0,
         });
     }
@@ -385,7 +386,7 @@ materialsReady.then(async () => {
     vectorTextLayer = new WrapviewVectorSvgTextLayer(WrapviewUtils.guid(), {
         size: { width: 480, height: 480 },
         pivot: { x: 0.5, y: 0.5 },
-        position: { x: size / 2, y: size / 2 },
+        position: { x: size / 2, y: size / 2  },
         angle: 0,
     });
 

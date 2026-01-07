@@ -4,6 +4,7 @@ class WrapviewVectorEffect {
         this.effectName = effectName || 'none';
         this.effectParameters = effectParameters
         this._path = null;
+        this._circleRadius = null;
         this.svgElement = null;
         this.root = null;
         this.SVG_SIZE = 600;
@@ -34,6 +35,9 @@ class WrapviewVectorEffect {
                 break;
             case 'bridge':
                 this._applyBridgeEffect();
+                break;
+            case 'circle':
+                this._applyCircleEffect();
                 break;
             default:
                 console.warn(`Unknown effect: ${this.effectName}, using 'none'`);
@@ -108,7 +112,7 @@ class WrapviewVectorEffect {
     _warpText(pathD, group, groupHeight, groupWidth, effectType) {
         try {
             if (effectType !== 'none') {
-                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: 'none' });
+                this._path = this.root.path(pathD).attr({ id: 'warpPath', fill: 'none', stroke: '#ffffff' });
                 const warp = new Warp(group ? group.node : this.root.node);
                 warp.interpolate(20);
                 warp.transform(([x, y]) => [x, this._getWarpedY(x, y, groupHeight, groupWidth, effectType)]);
@@ -123,24 +127,44 @@ class WrapviewVectorEffect {
         const normalizedX = x / w;
         const baseWarp = Math.sin(normalizedX * Math.PI) * (h / 4) * intensity;
         const normalizedY = (y - (h / 2)) / (h / 2);
-        // Formula: (y - h) / h where values range from 0-1
-
         switch (effectType) {
             case 'buldge':
                 return y + (normalizedY * baseWarp);
             case 'pinch':
                 return y - (normalizedY * baseWarp);
             case 'arch':
-                return y + this._path.pointAt(x).y - 80;
+                return y + this._path.pointAt(x).y - h / 2;
             case 'flag':
                 return y + this._path.pointAt(x).y - 80;
             case 'valley':
                 return y - ((y - h) / h) * baseWarp;
             case 'bridge':
                 return y + ((y - h) / h) * baseWarp;
+            case 'circle': {
+                const r = this._circleRadius || w / Math.PI || 1;
+                const cx = w / 2;
+                const cy = r;
+                const inside = (r * r) - Math.pow(x - cx, 2);
+                if (inside <= 0) {
+                    return y;
+                }
+                const arcY = cy - Math.sqrt(inside);
+                const shift = arcY - (h / 2);
+                return y + shift;
+            }
             default:
                 return y;
         }
+    }
+
+    _applyCircleEffect() {
+        console.log('Applying circle effect');
+        const draw = SVG(this.textSvg).addClass('Main');
+        draw.size(this.SVG_SIZE, this.SVG_SIZE);
+        draw.id('viewportSvg');
+        this.svgElement = draw.node;
+        this.root = draw;
+        return this.textSvg;
     }
 }
 

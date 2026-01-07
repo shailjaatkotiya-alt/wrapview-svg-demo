@@ -1582,13 +1582,13 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             const parser = new DOMParser();
             const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
             const svgElement = svgDoc.documentElement;
-            
+
             // Check for parsing errors
             if (svgElement.querySelector('parsererror')) {
                 console.error('SVG parsing error:', svgElement.querySelector('parsererror').textContent);
                 return null;
             }
-            
+
             // Ensure width and height are set
             if (!svgElement.hasAttribute('width')) {
                 svgElement.setAttribute('width', this._svg_size);
@@ -1599,7 +1599,7 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
             if (!svgElement.hasAttribute('xmlns')) {
                 svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
             }
-            
+
             const correctedSvgString = new XMLSerializer().serializeToString(svgElement);
             return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(correctedSvgString)}`;
         } catch (error) {
@@ -1654,21 +1654,43 @@ class WrapviewVectorSvgTextLayer extends WrapviewLayer {
                     return;
                 }
                 try {
-                    const textModel = new makerjs.models.Text(
-                        font,
-                        this._text.value(),
-                        this.settings.fontSize,
-                        false,
-                        false
-                    );
-                    const svgTextElement = makerjs.exporter.toSVG(textModel, {
-                        fill: this.settings.color ? this.settings.color.value() : '#ffffff',
-                        stroke: this.settings.outline?.color ? this.settings.outline.color.value() : '#000000',
-                        strokeWidth: this.settings.outline?.includes ? this.settings.outline.thickness : 0,
-                        fillRule: 'evenodd',
-                        scalingStroke: false
-                    });
-                    resolve(svgTextElement);
+                    if (this.settings.effect.effectName === 'circle') {
+                        const textModel = new makerjs.models.Text(
+                            font,
+                            this._text.value(),
+                            this.settings.fontSize,
+                            false,
+                            false
+                        );
+                        let topArc = new makerjs.paths.Arc([0, 0], 600, 90 - 90 / 2, 90 + 90 / 2);
+                        makerjs.layout.childrenOnPath(textModel, topArc, 0, true, true, true);
+
+                        const svgTextElement = makerjs.exporter.toSVG(textModel, {
+                            fill: this.settings.color ? this.settings.color.value() : '#ffffff',
+                            stroke: this.settings.outline?.color ? this.settings.outline.color.value() : '#000000',
+                            strokeWidth: this.settings.outline?.includes ? this.settings.outline.thickness : 0,
+                            fillRule: 'evenodd',
+                            scalingStroke: false
+                        });
+                        resolve(svgTextElement);
+
+                    } else {
+                        const textModel = new makerjs.models.Text(
+                            font,
+                            this._text.value(),
+                            this.settings.fontSize,
+                            false,
+                            false
+                        );
+                        const svgTextElement = makerjs.exporter.toSVG(textModel, {
+                            fill: this.settings.color ? this.settings.color.value() : '#ffffff',
+                            stroke: this.settings.outline?.color ? this.settings.outline.color.value() : '#000000',
+                            strokeWidth: this.settings.outline?.includes ? this.settings.outline.thickness : 0,
+                            fillRule: 'evenodd',
+                            scalingStroke: false
+                        });
+                        resolve(svgTextElement);
+                    }
                 } catch (error) {
                     reject(new Error('Failed to create vector text SVG: ' + error.message));
                 }
